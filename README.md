@@ -10,8 +10,11 @@ There are also special types, such as `ListView<E>` and `MapView<K, V>`,
 which implement views of Merkelized lists and maps, respectively.
 
 **WORK IN PROGRESS. PLEASE DO NOT USE IN PRODUCTION.**
-See [**exonum-client*][exonum-client] for the current stable implementation.
+See [`exonum-client`][exonum-client] for the current stable implementation.
 
 ## License
 
 Available under the [Apache-2.0 license](LICENSE).
+
+[exonum]: https://exonum.com/
+[exonum-client]: https://github.com/exonum/exonum-client
