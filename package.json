@@ -7,12 +7,12 @@
     "lib"
   ],
   "scripts": {
-    "test": "mocha -r babel-register test/**/*.js",
-    "cover": "cross-env NODE_ENV=test nyc mocha -- test/**/*.js",
+    "test": "mocha -r babel-register \"test/**/*.js\"",
+    "cover": "cross-env NODE_ENV=test nyc mocha -- \"test/**/*.js\"",
     "report-cover": "nyc report",
     "report-to-coveralls": "nyc report --reporter=text-lcov | coveralls",
     "lint": "eslint --ignore-path .gitignore .",
-    "compile": "babel src/ -d lib/ && cpy **/*.json ../lib/ --cwd=src --parents",
+    "compile": "babel src/ -d lib/ && cpy \"**/*.json\" ../lib/ --cwd=src --parents",
     "prepare": "npm run compile"
   },
   "author": "Exonum Team <exonum@bitury.com>",
