@@ -90,9 +90,6 @@ function $integer (byteLength, signed) {
       if (!('value' in _raw)) {
         throw new TypeError(`Not a number: ${value}`)
       }
-      if (isNaN(_raw.toJSNumber())) {
-        throw new TypeError(`Not a number: ${value}`)
-      }
 
       if (_raw.lt(MIN_VALUE) || _raw.gt(MAX_VALUE)) {
         throw new Error(`Value out of range: expected ${MIN_VALUE} <= x <= ${MAX_VALUE}, got ${_raw}`)

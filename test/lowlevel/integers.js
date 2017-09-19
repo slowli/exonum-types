@@ -186,35 +186,41 @@ for (let typeName in typeDefs) {
 
         let str = value.toString()
         it('should not construct from an out-of-range String ' + str, () => {
-          expect(() => new Type(str)).to.throw(Error, /range/i)
+          expect(() => new Type(str)).to.throw(/range/i)
         })
 
         for (let enc in baseEncodings) {
           let str = value.toString(baseEncodings[enc])
           it('should not construct from an out-of-range ' + enc + ' string ' + str, () => {
-            expect(() => new Type(str, enc)).to.throw(Error, /range/i)
+            expect(() => new Type(str, enc)).to.throw(/range/i)
           })
         }
       })
 
+      // Error messages may differ depending on `big-integer` version,
+      // so they are not checked here
       it('should fail with a faulty string', () => {
-        expect(() => new Type('__Faulty__')).to.throw(Error)
+        expect(() => new Type('__Faulty__')).to.throw()
       })
 
       it('should fail with a faulty dec string', () => {
-        expect(() => new Type('DE', 'dec')).to.throw(Error)
+        expect(() => new Type('DE', 'dec')).to.throw()
       })
 
       it('should fail with a faulty hex string', () => {
-        expect(() => new Type('XX', 'hex')).to.throw(Error)
+        expect(() => new Type('XX', 'hex')).to.throw()
       })
 
       it('should fail with a faulty oct string', () => {
-        expect(() => new Type('88', 'oct')).to.throw(Error)
+        expect(() => new Type('88', 'oct')).to.throw()
       })
 
       it('should fail with a faulty bin string', () => {
-        expect(() => new Type('2', 'bin')).to.throw(Error)
+        expect(() => new Type('2', 'bin')).to.throw()
+      })
+
+      it('should fail with an unknown encoding', () => {
+        expect(() => new Type('0', 'huh')).to.throw(/unknown.*encoding/i)
       })
 
       const invalidInitializers = [
