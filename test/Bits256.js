@@ -109,6 +109,12 @@ describe('Bits256', () => {
         }
       })
     })
+
+    it('should throw on out-of-bounds access', () => {
+      const bits = Bits256.from('11001010100101')
+      expect(bits.bit(-1)).to.be.undefined()
+      expect(bits.bit(100)).to.be.undefined()
+    })
   })
 
   describe('append', () => {
@@ -153,6 +159,18 @@ describe('Bits256', () => {
           })
         }
       })
+    })
+  })
+
+  describe('toString', () => {
+    it('should output full bit contents for short slice', () => {
+      const bits = Bits256.from('110111')
+      expect(bits.toString()).to.equal('bits(110111)')
+    })
+
+    it('should shorten bit contents for long slice', () => {
+      const bits = Bits256.from('1010101001')
+      expect(bits.toString()).to.equal('bits(10101010...)')
     })
   })
 })

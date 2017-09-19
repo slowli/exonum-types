@@ -39,8 +39,8 @@ export default class Bits256 extends Bits256Base {
 
   bit (pos) {
     pos = +pos
-    if (pos >= this.bitLength()) {
-      throw new RangeError(`Bit position out of bounds: ${pos} (max ${this.bitLength()} expected)`)
+    if (pos >= this.bitLength() || pos < 0) {
+      return undefined
     }
 
     const byte = Math.floor(pos / 8)
@@ -82,6 +82,7 @@ function padWithZeros (str, desiredLength) {
 }
 
 function trimZeros (str, desiredLength) {
+  /* istanbul ignore next: should never be triggered */
   if (str.length < desiredLength) {
     throw new Error('Invariant broken: negative zero trimming requested')
   }
