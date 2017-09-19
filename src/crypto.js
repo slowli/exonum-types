@@ -13,9 +13,9 @@ export const signatureLength = nacl.sign.signatureLength
 
 export function hash (...fragments) {
   const lengths = fragments.map(b => isExonumObject(b) ? b.byteLength() : b.length)
-  const totalLen = lengths.reduce((len, total) => len + total, 0)
+  const totalLen = lengths.reduce((total, len) => len + total, 0)
 
-  if (typeof totalLen !== 'number') {
+  if (typeof totalLen !== 'number' || isNaN(totalLen)) {
     throw new TypeError('Invalid argument(s) supplied for hash digest; arrayish objects and Exonum types supported')
   }
 
@@ -36,7 +36,7 @@ export function sign (message, secretKey) {
   if (isExonumObject(message)) {
     message = message.serialize()
   }
-  return nacl.sign.detached(message, rawOrSelf(secretKey))
+  return nacl.sign.detached(message, secretKey)
 }
 
 export function verify (message, signature, pubkey) {
@@ -55,8 +55,4 @@ export function randomKey () {
 
 export function fromSecretKey (secretKey) {
   return nacl.sign.keyPair.fromSecretKey(secretKey).publicKey
-}
-
-export function randomBytes (length) {
-  return nacl.randomBytes(length)
 }
