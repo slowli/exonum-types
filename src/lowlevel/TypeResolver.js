@@ -27,9 +27,7 @@ export default class TypeResolver {
   }
 
   addNativeTypes (namedTypes) {
-    for (let name in namedTypes) {
-      if (!namedTypes.hasOwnProperty(name)) continue
-
+    Object.keys(namedTypes).forEach(name => {
       if (this.types.has(name)) {
         throw new Error(`Type ${name} already exists`)
       }
@@ -38,7 +36,7 @@ export default class TypeResolver {
       if (!isExonumType(type)) {
         throw new TypeError('Type needs to be an Exonum type')
       }
-    }
+    })
 
     const newTypes = this.types.merge(namedTypes)
     return new TypeResolver(newTypes, this.factories)
@@ -46,7 +44,7 @@ export default class TypeResolver {
 
   addFactory (name, factory) {
     if (!isExonumFactory(factory)) {
-      throw new TypeError('Invalid factory')
+      throw new TypeError('Factory needs to be initialized with `initFactory()`')
     }
     if (this.factories.has(name)) {
       throw new Error(`Factory ${name} already exists`)
@@ -56,9 +54,7 @@ export default class TypeResolver {
   }
 
   addFactories (namedFactories) {
-    for (let name in namedFactories) {
-      if (!namedFactories.hasOwnProperty(name)) continue
-
+    Object.keys(namedFactories).forEach(name => {
       if (this.factories.has(name)) {
         throw new Error(`Factory ${name} already exists`)
       }
@@ -67,7 +63,7 @@ export default class TypeResolver {
       if (!isExonumFactory(factory)) {
         throw new TypeError('Factory needs to be initialized with `initFactory()`')
       }
-    }
+    })
 
     const newFactories = this.factories.merge(namedFactories)
     return new TypeResolver(this.types, newFactories)
@@ -182,7 +178,6 @@ export function dummyResolver () {
     },
 
     _getType (name) {
-      return undefined
     },
 
     _addPendingType (name) {
@@ -207,11 +202,8 @@ export function validateAndResolveFields (fields, resolver) {
   const resolvedFields = []
 
   fields.forEach((prop, i) => {
-    if (!prop.name) {
+    if (typeof prop.name !== 'string') {
       throw new TypeError(`No property name specified for property #${i}`)
-    }
-    if (prop.name[0] === '$') {
-      throw new TypeError(`Reserved property name: ${prop.name}`)
     }
     if (definedNames.indexOf(prop.name) >= 0) {
       throw new TypeError(`Property redefined: ${prop.name}`)

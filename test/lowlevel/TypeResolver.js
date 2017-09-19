@@ -4,7 +4,7 @@ import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
-import TypeResolver from '../../src/lowlevel/TypeResolver'
+import TypeResolver, { dummyResolver, validateAndResolveFields } from '../../src/lowlevel/TypeResolver'
 import Str from '../../src/lowlevel/Str'
 import array from '../../src/lowlevel/array'
 import fixedBuffer from '../../src/lowlevel/fixedBuffer'
@@ -12,6 +12,7 @@ import { integer, uinteger } from '../../src/lowlevel/integers'
 import option from '../../src/lowlevel/option'
 import struct from '../../src/lowlevel/struct'
 import union from '../../src/lowlevel/union'
+import { isExonumType } from '../../src/lowlevel/common'
 
 const expect = chai
   .use(chaiBytes)
@@ -35,6 +36,37 @@ describe('TypeResolver', () => {
 
   beforeEach(() => {
     resolver = new TypeResolver()
+  })
+
+  it('should fail on inadmissible native type', () => {
+    expect(() => resolver.addNativeType('foo', String)).to.throw(/Exonum type/i)
+    expect(() => resolver.addNativeTypes({ 'Foo': uinteger(3), String })).to.throw(/Exonum type/i)
+  })
+
+  it('should fail on adding native type with existing name', () => {
+    resolver = resolver.addNativeType('Foo', uinteger(3))
+    expect(() => resolver.addNativeType('Foo', uinteger(1))).to.throw(/Foo.*exists/)
+    expect(() => resolver.addNativeTypes({ Foo: uinteger(1) })).to.throw(/Foo.*exists/)
+  })
+
+  it('should fail on adding type with existing name', () => {
+    resolver = resolver.addNativeType('Foo', uinteger(3))
+      .addFactories({ uinteger })
+    expect(() => resolver.addTypes([
+      { name: 'Foo', uinteger: 2 }
+    ])).to.throw(/Foo.*exists/)
+  })
+
+  it('should fail on inadmissible factory', () => {
+    const factory = () => 42
+    expect(() => resolver.addFactory(factory)).to.throw(/initFactory/)
+    expect(() => resolver.addFactories({ factory })).to.throw(/initFactory/)
+  })
+
+  it('should fail on adding factory with existing name', () => {
+    resolver = resolver.addFactories(FACTORIES)
+    expect(() => resolver.addFactory('enum', uinteger)).to.throw(/enum.*exists/i)
+    expect(() => resolver.addFactories({ enum: uinteger })).to.throw(/enum.*exists/i)
   })
 
   it('should fail on unknown type name', () => {
@@ -237,6 +269,67 @@ describe('TypeResolver', () => {
     const lst = List.from([0, [1, [2, null]]])
     expect(lst.elements()).to.deep.equal([0, 1, 2])
   })
+
+  it('should fail on non-sensical type spec', () => {
+    expect(() => resolver.resolve(5)).to.throw(/invalid.*spec/i)
+  })
 })
 
-// TODO: validateAndResolveFields
+describe('dummyResolver', () => {
+  const dummy = dummyResolver()
+
+  it('should resolve Exonum types to themselves', () => {
+    expect(dummy.resolve(Str)).to.equal(Str)
+  })
+
+  it('should fail to resolve non-Exonum types', () => {
+    expect(() => dummy.resolve({ uinteger: 2 })).to.throw(/Exonum type expected/)
+  })
+})
+
+describe('validateAndResolveFields', () => {
+  const resolver = new TypeResolver()
+    .addNativeTypes({ Str, Foo: uinteger(4) })
+
+  it('should convert types in field specification', () => {
+    const spec = [
+      { name: 'foo', type: 'Foo' },
+      { name: 'bar', type: 'Str' },
+      { name: 'baz', type: option(integer(6)) }
+    ]
+    const parsedSpec = validateAndResolveFields(spec, resolver)
+
+    expect(parsedSpec).to.not.equal(spec)
+    parsedSpec.forEach(({ name, type }, i) => {
+      expect(name).to.equal(spec[i].name)
+      expect(type).to.satisfy(isExonumType)
+    })
+  })
+
+  it('should fail on an unnamed field', () => {
+    const spec = [
+      { name: 'foo', type: 'Foo' },
+      { noName: 'bar', type: 'Str' }
+    ]
+
+    expect(() => validateAndResolveFields(spec, resolver)).to.throw(/no.*name/i)
+  })
+
+  it('should fail on an untyped field', () => {
+    const spec = [
+      { name: 'foo', noType: 'Foo' },
+      { noName: 'bar', type: 'Str' }
+    ]
+
+    expect(() => validateAndResolveFields(spec, resolver)).to.throw(/no.*type/i)
+  })
+
+  it('should fail on a duplicate field', () => {
+    const spec = [
+      { name: 'foo', type: 'Foo' },
+      { name: 'foo', type: 'Str' }
+    ]
+
+    expect(() => validateAndResolveFields(spec, resolver)).to.throw(/redefined/i)
+  })
+})
