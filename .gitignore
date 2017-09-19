@@ -1,0 +1,16 @@
+# vim files
+*.swp
+# macos files
+*.DS_Store
+
+# IDE files
+.idea
+.vscode
+*.iml
+
+.nyc_output
+node_modules
+npm-debug.log
+coverage
+dist
+lib
