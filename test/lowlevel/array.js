@@ -37,6 +37,11 @@ describe('array', () => {
   })
 
   describe('constructor', () => {
+    it('should create an empty array', () => {
+      const x = new StrArray()
+      expect(x.count()).to.equal(0)
+    })
+
     jsSamples.forEach(({ 0: Type, 1: arr }) => {
       it(`should support native JS array for ${Type.inspect()}`, () => {
         const x = new Type(arr)
@@ -53,6 +58,20 @@ describe('array', () => {
       expect(x.get(0).x).to.equal(10)
       expect(x.get(0).y).to.equal(20)
       expect(x.get(1).toJSON()).to.deep.equal({ x: 50, y: 60 })
+    })
+
+    const invalidInitializers = [
+      ['string', 'foo'],
+      ['boolean', true],
+      ['uint8array', new Uint8Array(10)],
+      ['object', { 1: 'bar' }],
+      ['function', () => {}]
+    ]
+
+    invalidInitializers.forEach(({ 0: name, 1: val }) => {
+      it(`should throw on invalid initializer ${name}`, () => {
+        expect(() => new EUint8Array(val)).to.throw(/invalid.*initializer/i)
+      })
     })
   })
 
@@ -88,6 +107,30 @@ describe('array', () => {
     it('should support native JS array for StructArray', () => {
       const x = new StructArray([{ x: 10, y: 20 }, [50, 60]])
       expect(x.toJSON()).to.deep.equal([{ x: 10, y: 20 }, { x: 50, y: 60 }])
+    })
+  })
+
+  describe('toList', () => {
+    it('should return list with primitive values when possible', () => {
+      const x = new StrArray([ 'foo', 'bar' ])
+      expect(x.toList().count()).to.equal(2)
+      expect(x.toList().get(0)).to.equal('foo')
+      expect(x.toList().get(1)).to.equal('bar')
+    })
+
+    it('should return list with original values for complex elements', () => {
+      const x = new StructArray([ [1, 2], [3, 4], [5, 6] ])
+      expect(x.toList().count()).to.equal(3)
+      expect(x.toList()).to.satisfy(lst => lst.every(isExonumObject))
+    })
+  })
+
+  describe('toOriginalList', () => {
+    it('should return list with original elements even for coercible element types', () => {
+      const x = new StrArray([ 'foo', 'bar' ])
+      const lst = x.toOriginalList()
+      expect(lst.count()).to.equal(2)
+      expect(lst).to.satisfy(l => l.every(isExonumObject))
     })
   })
 })
