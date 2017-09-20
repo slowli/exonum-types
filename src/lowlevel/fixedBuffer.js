@@ -1,4 +1,6 @@
-import { rawValue, setRawValue, isExonumObject, initType } from './common'
+import { List } from 'immutable'
+
+import { rawValue, setRawValue, isExonumObject, initType, memoize } from './common'
 import initFactory from './initFactory'
 import { validateString, encode, decode, getEncoding } from './bufferEncodings'
 
@@ -87,7 +89,24 @@ function fixedBuffer (length) {
       const bytes = (length > 4) ? rawValue(this).subarray(0, 4) : rawValue(this)
       return `Buffer(${encode(bytes, 'hex')}${(length > 4) ? '...' : ''})`
     }
+
+    hashCode () {
+      return List(rawValue(this)).hashCode()
+    }
+
+    equals (other) {
+      if (!isBuffer(other)) return false
+
+      const rawThis = rawValue(this)
+      const rawOther = rawValue(other)
+
+      // Different buffer lengths
+      if (rawOther.length !== rawThis.length) return false
+      return rawThis.every((byte, i) => byte === rawOther[i])
+    }
   }
+
+  FixedBuffer.prototype.hashCode = memoize(FixedBuffer.prototype.hashCode)
 
   return initType(FixedBuffer, {
     typeLength: length,
