@@ -43,7 +43,7 @@ function fixedBuffer (length) {
         // String-based constructor
         if (!encoding) encoding = 'hex'
         if (!validateString(obj, length, encoding)) {
-          throw new TypeError(`Cannot parse buffer-encoding string: ${obj}`)
+          throw new TypeError(`Cannot parse buffer string ${obj} in ${encoding} encoding`)
         }
         _raw = decode(obj, length, encoding)
       } else if (isBuffer(obj)) {
