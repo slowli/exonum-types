@@ -18,6 +18,16 @@ export function getBit (buffer, pos) {
   return (buffer[byte] & (1 << (7 - bitPos))) >> (7 - bitPos)
 }
 
+/**
+ * `Bits256` represents partial and complete (terminal) keys of `MapView`s. The instances
+ * are comprised of 3 fields:
+ *
+ *   - `isTerminal` marker signifying whether the the instance corresponds to a complete
+ *     or incomplete key
+ *   - `bytes` is an ordinary 32-byte serialization of the key
+ *   - `bitLengthByte` is the number of bits in the `bytes` that are actually used.
+*      Other bits are set to zero. For terminal keys, this field is equal to 0
+ */
 export default class Bits256 extends Bits256Base {
   constructor (str) {
     if (typeof str !== 'string') {
@@ -41,6 +51,12 @@ export default class Bits256 extends Bits256Base {
     return this.isTerminal ? BIT_LENGTH : this.bitLengthByte
   }
 
+  /**
+   * Retrieves a bit at a specific position of this key.
+   *
+   * @param {number} pos
+   * @returns {0 | 1 | void}
+   */
   bit (pos) {
     pos = +pos
     if (pos >= this.bitLength() || pos < 0) {
@@ -50,13 +66,20 @@ export default class Bits256 extends Bits256Base {
     return getBit(this.bytes, pos)
   }
 
+  /**
+   * Returns the result of concatenation of this key with another one. If the length
+   * of the concatenated key exceeds 256 bits, an error is raised.
+   *
+   * @param {Bits256} other
+   * @returns {Bits256}
+   */
   append (otherBits) {
     const sumLength = this.bitLength() + otherBits.bitLength()
     if (sumLength > BIT_LENGTH) {
       throw new Error(`Resulting bit slice too long: ${sumLength} (max ${BIT_LENGTH} supported)`)
     }
 
-    // XXX: lazy
+    // XXX: lazy and inefficient
     return new Bits256(this.toJSON() + otherBits.toJSON())
   }
 
