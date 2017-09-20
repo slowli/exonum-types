@@ -98,12 +98,12 @@ in the [Flow][flow] notation as
 
 ```javascript
 interface ExonumType {
-  static typeLength(): number | void,
-  static from(json: any): this,
-  constructor(json: any),
-  byteLength(): number,
-  serialize(buffer?: Uint8Array): Uint8Array,
-  toJSON(): any
+  static typeLength(): number | void;
+  static from(json: any): ExonumType;
+  constructor(json: any);
+  byteLength(): number;
+  serialize(buffer?: Uint8Array): Uint8Array;
+  toJSON(): any;
 }
 ```
 
