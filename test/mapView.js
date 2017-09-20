@@ -15,6 +15,23 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
+const Hash = fixedBuffer(32)
+
+function padWithZeros (bits) {
+  while (bits.length < 256) bits = bits + '0'
+  return Hash.from({ bin: bits })
+}
+
+function padWithOnes (bits) {
+  while (bits.length < 256) bits = bits + '1'
+  return Hash.from({ bin: bits })
+}
+
+function padWithRandom (bits) {
+  while (bits.length < 256) bits = bits + (Math.random() > 0.5 ? '1' : '0')
+  return Hash.from({ bin: bits })
+}
+
 describe('mapView', () => {
   function testValidSample (sampleName) {
     describe(`on sample ${sampleName}`, () => {
@@ -26,18 +43,63 @@ describe('mapView', () => {
 
       let map
 
-      it(`should parse valid map view from sample`, () => {
+      it('should parse valid map view from sample', () => {
         map = new MapView(json)
+
         expect(map.count()).to.equal(expected.entries.length)
+
         map.entrySeq().forEach(({ 0: key, 1: val }, i) => {
           expect(key).to.equalBytes(expected.entries[i][0])
           expect(val).to.equalBytes(expected.entries[i][1])
+        })
+
+        expected.entries.forEach(({ 0: key, 1: val }) => {
+          expect(map.has(key)).to.be.true()
+          expect(map.get(key)).to.equalBytes(val)
         })
       })
 
       it('should calculate correct root hash', () => {
         expect(map.rootHash()).to.equalBytes(expected.rootHash)
       })
+
+      it('should report visible keys as potential', () => {
+        map.keySeq().forEach(key => {
+          expect(map.mayHave(key), `Failed for key ${key}`).to.be.true()
+        })
+      })
+
+      if (expected.maybeKeys) {
+        it('should report potential keys in the map', () => {
+          expected.maybeKeys.forEach(key => {
+            if (key.endsWith('...')) {
+              key = key.substring(0, key.length - 3)
+
+              expect(map.mayHave(padWithZeros(key)), `Failed for ${key}(0)*`).to.be.true()
+              expect(map.mayHave(padWithOnes(key)), `Failed for ${key}(1)*`).to.be.true()
+              expect(map.mayHave(padWithRandom(key)), `Failed for ${key}.*`).to.be.true()
+            } else {
+              expect(map.mayHave({ bin: key }), `Failed for ${key.substring(0, 20)}...`).to.be.true()
+            }
+          })
+        })
+      }
+
+      if (expected.notKeys) {
+        it('should report non-existing keys in the map', () => {
+          expected.notKeys.forEach(key => {
+            if (key.endsWith('...')) {
+              key = key.substring(0, key.length - 3)
+
+              expect(map.mayHave(padWithZeros(key)), `Failed for ${key}(0)*`).to.be.false()
+              expect(map.mayHave(padWithOnes(key)), `Failed for ${key}(1)*`).to.be.false()
+              expect(map.mayHave(padWithRandom(key)), `Failed for ${key}.*`).to.be.false()
+            } else {
+              expect(map.mayHave({ bin: key }), `Failed for ${key.substring(0, 20)}...`).to.be.true()
+            }
+          })
+        })
+      }
     })
   }
 
@@ -46,4 +108,5 @@ describe('mapView', () => {
   testValidSample('valid-special-root')
   testValidSample('valid-special-root-no-values')
   testValidSample('valid-single-value')
+  testValidSample('valid-empty')
 })
