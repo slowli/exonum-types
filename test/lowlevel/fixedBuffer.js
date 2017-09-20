@@ -1,5 +1,6 @@
 /* eslint-env mocha */
 
+import { Range, Map, Set } from 'immutable'
 import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
@@ -133,6 +134,73 @@ describe('fixedBuffer', () => {
     it('should shorten long buffer', () => {
       const buf = new LongBuffer()
       expect(buf.toString()).to.equal('Buffer(00000000...)')
+    })
+  })
+
+  describe('hashCode', () => {
+    it('should be different for different buffer values', () => {
+      const cnt = Range(0, 256)
+        .map(i => new ShortBuffer([i, 0, 0, 0]).hashCode())
+        .toSet()
+        .count()
+      expect(cnt).to.equal(256)
+    })
+
+    it('should return the same value for instantiations of the same buffer', () => {
+      const x = new ShortBuffer([1, 2, 3, 4])
+      const y = ShortBuffer.from('01020304')
+      expect(x.hashCode()).to.equal(y.hashCode())
+    })
+
+    it('should return different values for differing buffer lengths', () => {
+      const x = new ShortBuffer()
+      const y = fixedBuffer(5).from()
+      expect(x.hashCode()).to.not.equal(y.hashCode())
+    })
+
+    it('should be the same for differently named types with the same meaning', () => {
+      const x = new ShortBuffer([1, 2, 3, 4])
+      const y = fixedBuffer(4).from('01020304')
+      expect(x.hashCode()).to.equal(y.hashCode())
+    })
+  })
+
+  describe('equals', () => {
+    it('should return false for non-buffer objects', () => {
+      const x = new ShortBuffer([1, 2, 3, 4])
+      const y = [1, 2, 3, 4]
+      expect(x.equals(y)).to.be.false()
+    })
+
+    it('should return false for diffrent length buffer objects', () => {
+      const x = new ShortBuffer()
+      const y = fixedBuffer(5).from()
+      expect(x.equals(y)).to.be.false()
+    })
+
+    it('should return the same value for instantiations of the same buffer', () => {
+      const x = new ShortBuffer([1, 2, 3, 4])
+      const y = ShortBuffer.from('01020304')
+      expect(x.equals(y)).to.be.true()
+    })
+
+    it('should return the same value for differently named types with the same meaning', () => {
+      const x = new ShortBuffer([1, 2, 3, 4])
+      const y = fixedBuffer(4).from('01020304')
+      expect(x.equals(y)).to.be.true()
+    })
+
+    it('should integrate into immutable.js type system', () => {
+      const x = new ShortBuffer([1, 2, 3, 4])
+      const y = fixedBuffer(4).from('01020304')
+
+      let set = Set.of(x, y)
+      expect(set.count()).to.equal(1)
+      set = set.add(fixedBuffer(5).from('0102030400'))
+      expect(set.count()).to.equal(2)
+
+      let map = Map([[x, 1]])
+      expect(map.get(y)).to.equal(1)
     })
   })
 })
