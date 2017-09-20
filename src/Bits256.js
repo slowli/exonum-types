@@ -11,6 +11,13 @@ const Bits256Base = std.resolve({
   ]
 })
 
+export function getBit (buffer, pos) {
+  const byte = Math.floor(pos / 8)
+  const bitPos = pos % 8
+
+  return (buffer[byte] & (1 << (7 - bitPos))) >> (7 - bitPos)
+}
+
 export default class Bits256 extends Bits256Base {
   constructor (str) {
     if (typeof str !== 'string') {
@@ -40,10 +47,7 @@ export default class Bits256 extends Bits256Base {
       return undefined
     }
 
-    const byte = Math.floor(pos / 8)
-    const bitPos = pos % 8
-
-    return (this.bytes[byte] & (1 << (7 - bitPos))) >> (7 - bitPos)
+    return getBit(this.bytes, pos)
   }
 
   append (otherBits) {
