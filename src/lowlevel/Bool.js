@@ -23,7 +23,7 @@ const Bool = initType(class {
     return rawValue(this)
   }
 }, {
-  byteLength: 1,
+  typeLength: 1,
   proxiedMethods: [
     'toString',
     'valueOf'

@@ -175,7 +175,7 @@ function fixedBuffer (length) {
       return `Buffer(${encode(bytes, 'hex')}${(length > 4) ? '...' : ''})`
     }
   }, {
-    byteLength: length,
+    typeLength: length,
     name: `Buffer<${length}>`
   })
 }

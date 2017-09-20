@@ -65,7 +65,7 @@ function array (ElementType, resolver) {
     }
   }, {
     name: `Array<${ElementType.inspect()}>`,
-    byteLength: undefined
+    typeLength: undefined
   })
 
   return ExonumArray

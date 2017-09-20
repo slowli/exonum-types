@@ -113,7 +113,7 @@ function union (spec, resolver) {
       return `${getVariant(this)}(${getValue(this)})`
     }
   }, {
-    byteLength: undefined
+    typeLength: undefined
   })
 
   function getVariant (union) {

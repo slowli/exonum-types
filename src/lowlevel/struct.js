@@ -88,7 +88,7 @@ function struct (spec, resolver) {
       return `{ ${props.join(', ')} }`
     }
   }, {
-    byteLength: hasFixedLength ? fixedLength : undefined,
+    typeLength: hasFixedLength ? fixedLength : undefined,
     name: structName(spec)
   })
 }

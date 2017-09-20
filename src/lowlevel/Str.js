@@ -72,7 +72,7 @@ export default initType(class {
     return stringLength(rawValue(this))
   }
 }, {
-  byteLength: undefined,
+  typeLength: undefined,
   proxiedMethods: getMethodNames(String.prototype),
   name: 'Str'
 })

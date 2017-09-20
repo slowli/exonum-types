@@ -10,5 +10,5 @@ export default initType(class {
   }
 }, {
   name: 'None',
-  byteLength: 0
+  typeLength: 0
 })

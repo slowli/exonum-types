@@ -124,8 +124,9 @@ function $integer (byteLength, signed) {
 
   const proxiedMethods = getMethodNames(Object.getPrototypeOf(bigInt(0)))
     .filter(method => method !== 'toJSON')
+
   return initType(SizedInteger, {
-    byteLength,
+    typeLength: byteLength,
     proxiedMethods,
     name: signed ? `Int${byteLength * 8}` : `Uint${byteLength * 8}`
   })

@@ -20,7 +20,7 @@ export default function placeholder () {
     }
   }, {
     name: 'Placeholder',
-    byteLength: undefined
+    typeLength: undefined
   })
 
   setRawValue(Placeholder, { placeholder: true })

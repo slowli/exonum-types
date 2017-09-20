@@ -109,7 +109,7 @@ function message ({
     }
   }, {
     name,
-    byteLength: BodyType.typeLength() === undefined
+    typeLength: BodyType.typeLength() === undefined
       ? undefined
       : (headLength + BodyType.typeLength() + sigLength)
   })
