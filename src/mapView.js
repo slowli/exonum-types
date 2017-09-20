@@ -1,7 +1,7 @@
 import { OrderedMap } from 'immutable'
 
 import { memoize, rawValue, setRawValue } from './lowlevel/common'
-import { resolver as stdResolver } from './std'
+import std from './std'
 import { hash } from './crypto'
 import Bits256 from './Bits256'
 
@@ -55,11 +55,15 @@ const MAP_VIEW_NODE_DEF = [
  */
 function mapViewRoot (ValType, resolver) {
   // XXX: works only with "native" type definitions
-  return stdResolver.addNativeTypes({ Bits256, T: ValType })
+  return std.resolver.addNativeTypes({ Bits256, T: ValType })
     .addTypes(MAP_VIEW_NODE_DEF)
     .resolve('MapViewRoot')
 }
 
+/**
+ * Walks the tree and parses the structure of a proof for MapView.
+ * Throws errors if the structure is incorrect (i.e., some broken invariants).
+ */
 function parseTreeStructure (tree) {
   const nodes = []
   const leaves = []
@@ -138,7 +142,7 @@ function stubHash ({ key, value }) {
 /**
  * Recursively calculates the hash of the entire `MapView`.
  *
- * @param {ListViewNode<any>} node
+ * @param {MapViewNode<any>} node
  * @returns {Uint8Array}
  */
 function treeHash (node) {
@@ -169,7 +173,7 @@ export default function mapView (ValType, resolver) {
   // The `Root<ValType>` class
   const Root = mapViewRoot(ValType, resolver)
 
-  const MapView = class {
+  class MapView {
     constructor (obj) {
       const root = Root.from(obj)
 
