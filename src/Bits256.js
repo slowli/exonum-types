@@ -1,12 +1,9 @@
 import std from './std'
-import { encodings } from './lowlevel/fixedBuffer'
+import { encode } from './lowlevel/bufferEncodings'
 
 const BIT_LENGTH = 256
 
-// Encodes `Uint8Array` into a binary string
-const binEncode = encodings.bin.encode
-
-const Bits256Base = std.resolver.resolve({
+const Bits256Base = std.resolve({
   struct: [
     { name: 'isTerminal', type: 'Bool' },
     { name: 'bytes', type: { fixedBuffer: BIT_LENGTH / 8 } },
@@ -60,13 +57,13 @@ export default class Bits256 extends Bits256Base {
   }
 
   toJSON () {
-    return trimZeros(binEncode(this.bytes), this.bitLength())
+    return trimZeros(encode(this.bytes, 'bin'), this.bitLength())
   }
 
   toString () {
     const bits = (this.bitLength() > 8)
-      ? trimZeros(binEncode(this.bytes), 8) + '...'
-      : trimZeros(binEncode(this.bytes), this.bitLength())
+      ? trimZeros(encode(this.bytes, 'bin'), 8) + '...'
+      : trimZeros(encode(this.bytes, 'bin'), this.bitLength())
     return `bits(${bits})`
   }
 }
