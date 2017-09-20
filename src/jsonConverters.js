@@ -22,7 +22,7 @@ export function convertListJSON (json) {
   } else if ('val' in json) {
     // value
   } else {
-    throw new TypeError('Invalid proof node')
+    throw new TypeError('Invalid list JSON')
   }
 
   return json

@@ -27,7 +27,7 @@ function isInteger (maybeInteger) {
 function getEncoding (obj) {
   if (!obj) return undefined
 
-  for (var enc of [ 'dec', 'hex', 'oct', 'bin' ]) {
+  for (let enc of [ 'dec', 'hex', 'oct', 'bin' ]) {
     if (obj[enc] && typeof obj[enc] === 'string') {
       return enc
     }
@@ -43,16 +43,16 @@ function getEncoding (obj) {
  * @returns created integer type
  */
 function $integer (byteLength, signed) {
-  var MIN_VALUE = signed
+  const MIN_VALUE = signed
     ? bigInt(1).shiftLeft(byteLength * 8 - 1).multiply(-1)
     : bigInt(0)
-  var MAX_VALUE = (signed
+  const MAX_VALUE = (signed
     ? bigInt(1).shiftLeft(byteLength * 8 - 1)
     : bigInt(1).shiftLeft(byteLength * 8)).minus(1)
 
   class SizedInteger {
     constructor (value, encoding) {
-      var _raw
+      let _raw
 
       if (getEncoding(value)) {
         // Allow initializations like `SizedInteger({ hex: 'abcdef' })`,

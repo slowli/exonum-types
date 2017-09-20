@@ -121,7 +121,7 @@ describe('union', () => {
     })
 
     it('should return raw value for buffers', () => {
-      const BufferUnion = std.resolver.resolve({
+      const BufferUnion = std.resolve({
         union: [
           { name: 'buf', type: { fixedBuffer: 8 } },
           { name: 'u64', type: std.Uint64 }

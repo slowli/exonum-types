@@ -16,10 +16,10 @@ function isBuffer (obj) {
  * @api public
  */
 function fixedBuffer (length) {
-  return initType(class {
+  class FixedBuffer {
     /**
      * @param {String | Array<number> | Uint8Array | FixedBuffer} obj
-     * @param {String} [encoding]
+     * @param {?String} encoding
      */
     constructor (obj, encoding) {
       var _raw
@@ -38,10 +38,10 @@ function fixedBuffer (length) {
         // Initialize with zeros
         _raw = new Uint8Array(length)
       } else if (typeof obj === 'string') {
-        // String-based construc
+        // String-based constructor
         if (!encoding) encoding = 'hex'
         if (!validateString(obj, length, encoding)) {
-          throw new TypeError(`Cannot parse string: ${obj}`)
+          throw new TypeError(`Cannot parse buffer-encoding string: ${obj}`)
         }
         _raw = decode(obj, length, encoding)
       } else if (isBuffer(obj)) {
@@ -87,7 +87,9 @@ function fixedBuffer (length) {
       const bytes = (length > 4) ? rawValue(this).subarray(0, 4) : rawValue(this)
       return `Buffer(${encode(bytes, 'hex')}${(length > 4) ? '...' : ''})`
     }
-  }, {
+  }
+
+  return initType(FixedBuffer, {
     typeLength: length,
     name: `Buffer<${length}>`
   })

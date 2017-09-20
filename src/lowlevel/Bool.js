@@ -4,7 +4,7 @@ function isBoolean (obj) {
   return obj && typeof rawValue(obj) === 'boolean'
 }
 
-const Bool = initType(class {
+class $Bool {
   constructor (val) {
     const raw = isBoolean(val) ? rawValue(val) : !!val
     setRawValue(this, raw)
@@ -22,7 +22,9 @@ const Bool = initType(class {
   toJSON () {
     return rawValue(this)
   }
-}, {
+}
+
+const Bool = initType($Bool, {
   typeLength: 1,
   proxiedMethods: [
     'toString',
