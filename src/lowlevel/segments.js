@@ -69,15 +69,13 @@ export function serialize (buffer, values, heapPos) {
     }
   })
 
-  /* istanbul ignore next: should never be triggered */
   if (mainPos !== initHeap) {
     throw new Error(`Invariant broken: The length of the main segment ${mainPos} does not match the heap position ${initHeap}`)
   }
 
-  /* istanbul ignore next: should never be triggered */
   if (heapPos < buffer.length) {
     throw new Error(`Invariant broken: Under-allocation of heap, ${buffer.length} bytes allocated vs ${heapPos} used`)
-  } else /* istanbul ignore next */ if (heapPos > buffer.length) {
+  } else if (heapPos > buffer.length) {
     throw new Error(`Invariant broken: Over-allocation of heap, ${buffer.length} bytes allocated vs ${heapPos} used`)
   }
 
