@@ -158,7 +158,8 @@ like in the example above. For more complex operations, you may use `resolver`;
 it allows to parse sequential type definitions (including recursive and cross-recursive)
 fully specified in JSON.
 
-spec.json
+**spec.json**
+
 ```json
 [
   {
@@ -182,7 +183,8 @@ spec.json
 ]
 ```
 
-spec.js
+**spec.js**
+
 ```javascript
 import defs from './spec.json'
 
@@ -191,6 +193,10 @@ const myResolver = exonum.resolver.addTypes(defs)
 const List = myResolver.resolve('List')
 const lst = List.from([[1, 2], [{ x: 3, y: 4 }, null]])
 ```
+
+Just like Exonum types and instances, resolvers are immutable and persistent.
+This means new types do not influence the standard resolver; calling `resolve('List')`
+will throw an exception.
 
 ## License
 
