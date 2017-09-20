@@ -5,6 +5,8 @@ import std from './std'
 import { hash } from './crypto'
 import Bits256 from './Bits256'
 
+const Hash = std.resolve('Hash')
+
 const MAP_VIEW_NODE_DEF = [
   {
     name: 'MapViewNode',
@@ -157,10 +159,7 @@ function treeHash (node) {
   }
 }
 
-// Methods proxied from `OrderedMap` to `MapView`
 const PROXIED_METHODS = [
-  'get',
-  'count',
   'keys',
   'values',
   'entries',
@@ -187,7 +186,7 @@ export default function mapView (ValType, resolver) {
           validateStub(stub)
           if (stub.value.type === 'val') {
             // Initialize the tree with a single element
-            mapEntries = [[stub.key.bytes, stub.value.val]]
+            mapEntries = [[stub.key.getOriginal('bytes'), stub.value.val]]
           } else {
             // No visible elements in the tree
           }
@@ -195,7 +194,7 @@ export default function mapView (ValType, resolver) {
         case 'tree':
           const { values } = parseTreeStructure(root.tree)
           // Guaranteed to be sorted by ascending `node.pos`
-          mapEntries = values.map(node => [node.fullKey.bytes, node.val])
+          mapEntries = values.map(node => [node.fullKey.getOriginal('bytes'), node.val])
           break
       }
 
@@ -215,13 +214,27 @@ export default function mapView (ValType, resolver) {
           return treeHash(root.tree)
       }
     }
+
+    count () {
+      return rawValue(this).map.count()
+    }
+
+    has (hash) {
+      const map = rawValue(this).map
+      return map.has(Hash.from(hash))
+    }
+
+    get (hash) {
+      const map = rawValue(this).map
+      return map.get(Hash.from(hash))
+    }
   }
 
   MapView.prototype.rootHash = memoize(MapView.prototype.rootHash)
 
   PROXIED_METHODS.forEach(methodName => {
     MapView.prototype[methodName] = function () {
-      const map = rawValue(this).map
+      const map = rawValue(this).map.mapKeys(k => rawValue(k, true))
       return map[methodName].apply(map, arguments)
     }
   })
