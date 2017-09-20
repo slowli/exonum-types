@@ -3,7 +3,7 @@ import { OrderedMap } from 'immutable'
 import { memoize, rawValue, setRawValue } from './lowlevel/common'
 import std from './std'
 import { hash } from './crypto'
-import Bits256 from './Bits256'
+import Bits256, { getBit } from './Bits256'
 
 const Hash = std.resolve('Hash')
 
@@ -159,6 +159,63 @@ function treeHash (node) {
   }
 }
 
+/**
+ * Searches for a (hash) key in a tree-like proof for the `MapView`.
+ *
+ * @returns {boolean}
+ *   `true` if the tree *may* continue the searched key, `false` otherwise
+ */
+function searchKey (node, key) {
+  let pos = 0
+
+  while (node.type === 'branch') {
+    const { left, right, leftKey, rightKey } = node.branch
+
+    let i = 0
+    while (leftKey.bit(i) === getBit(key, pos + i) && rightKey.bit(i) === getBit(key, pos + i)) {
+      i++ // May only be triggered for the root branch
+    }
+
+    // Are the both keys different from our key? If yes, our key is not in the tree
+    if (
+      pos === 0 &&
+      leftKey.bit(i) === rightKey.bit(i) &&
+      leftKey.bit(i) !== getBit(key, i)
+    ) {
+      return false
+    }
+
+    // `leftKey` and `rightKey` cannot be both exhausted here
+    // because otherwise they would be the same
+
+    let path
+    let pathKey
+    if (leftKey.bitLength() < i || leftKey.bit(i) === getBit(key, pos + i)) {
+      [path, pathKey] = [left, leftKey]
+    } else if (rightKey.bitLength() < i || rightKey.bit(i) === getBit(key, pos + i)) {
+      [path, pathKey] = [right, rightKey]
+    } else {
+      /* istanbul ignore next: seems to be unreachable */
+      throw new Error('Invariant broken: Bogus execution path in searching a key in MapView')
+    }
+
+    // Go down the path until it is exhausted or there is a discrepancy among keys
+    while (i < pathKey.bitLength() && pathKey.bit(i) === getBit(key, pos + i)) {
+      i++
+    }
+
+    if (i >= pathKey.bitLength()) {
+      pos += pathKey.bitLength()
+      node = path
+    } else {
+      return false
+    }
+  }
+
+  // node.type !== 'branch', there is or may be a specified key
+  return true
+}
+
 const PROXIED_METHODS = [
   'keys',
   'values',
@@ -227,6 +284,22 @@ export default function mapView (ValType, resolver) {
     get (hash) {
       const map = rawValue(this).map
       return map.get(Hash.from(hash))
+    }
+
+    /**
+     * Checks whether this map can contain a key matching the specified hash.
+     */
+    mayHave (hash) {
+      const root = rawValue(this).root
+
+      switch (root.type) {
+        case 'empty':
+          return false
+        case 'stub':
+          return Hash.from(hash).equals(root.stub.key.getOriginal('bytes'))
+        case 'tree':
+          return searchKey(root.tree, rawValue(Hash.from(hash)))
+      }
     }
   }
 
