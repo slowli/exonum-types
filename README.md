@@ -1,5 +1,16 @@
 # Exonum Serialization for JavaScript
 
+[![Build status][travis-image]][travis-url]
+[![Code coverage][coveralls-image]][coveralls-url]
+[![Code style][code-style-image]][code-style-url]
+
+[travis-image]: https://img.shields.io/travis/slowli/exonum-types.svg?style=flat-square
+[travis-url]: https://travis-ci.org/slowli/exonum-types
+[coveralls-image]: https://img.shields.io/coveralls/slowli/exonum-types.svg?style=flat-square
+[coveralls-url]: https://coveralls.io/github/slowli/exonum-types
+[code-style-image]: https://img.shields.io/badge/code%20style-standard-blue.svg?style=flat-square
+[code-style-url]: http://standardjs.com/
+
 This is the alternative/experimental JavaScript implementation of the type system for
 the [Exonum][exonum] framework. It provides a library of standard types
 and the ability to define new types (including generic types).
