@@ -5,8 +5,8 @@ const ENCODINGS = {
     },
 
     decode (str, buffer) {
-      for (var i = 0; i < buffer.length; i++) {
-        var byte = str.substring(2 * i, 2 * i + 2)
+      for (let i = 0; i < buffer.length; i++) {
+        const byte = str.substring(2 * i, 2 * i + 2)
         buffer[i] = parseInt(byte, 16)
       }
     },
@@ -24,8 +24,8 @@ const ENCODINGS = {
     },
 
     decode (str, buffer) {
-      for (var i = 0; i < buffer.length; i++) {
-        var byte = str.substring(8 * i, 8 * i + 8)
+      for (let i = 0; i < buffer.length; i++) {
+        const byte = str.substring(8 * i, 8 * i + 8)
         buffer[i] = parseInt(byte, 2)
       }
     },
@@ -49,6 +49,7 @@ export function validateString (str, expectedLength, encoding) {
   if (!ENCODINGS[encoding]) {
     throw new TypeError(`Unknown encoding: ${encoding}`)
   }
+
   return ENCODINGS[encoding].validate(str, expectedLength)
 }
 
@@ -63,7 +64,8 @@ export function decode (str, length, encoding) {
   if (!ENCODINGS[encoding]) {
     throw new TypeError(`Unknown encoding: ${encoding}`)
   }
-  var buffer = new Uint8Array(length)
+
+  const buffer = new Uint8Array(length)
   ENCODINGS[encoding].decode(str, buffer)
   return buffer
 }
@@ -79,6 +81,7 @@ export function encode (buffer, encoding) {
   if (!ENCODINGS[encoding]) {
     throw new TypeError(`Unknown encoding: ${encoding}`)
   }
+
   return ENCODINGS[encoding].encode(buffer)
 }
 

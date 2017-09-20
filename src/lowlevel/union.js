@@ -5,7 +5,7 @@ import { validateAndResolveFields } from './TypeResolver'
 const DEFAULT_MARKER = 'type'
 
 export function parseUnion (obj, marker, variantNames) {
-  var variantName, variant
+  let variantName, variant
 
   if (obj[marker]) {
     variant = Object.assign({}, obj)
@@ -19,6 +19,7 @@ export function parseUnion (obj, marker, variantNames) {
     variantName = variantNames.find(name => name in obj)
     if (variantName) variant = obj[variantName]
   }
+
   return variantName ? [variantName, variant] : undefined
 }
 

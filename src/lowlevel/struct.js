@@ -26,12 +26,15 @@ function struct (spec, resolver) {
     }
 
     set (name, value) {
-      var idx = propertyNames.indexOf(name)
+      const idx = propertyNames.indexOf(name)
+
       if (idx >= 0) {
         const Type = spec[idx].type
+
         if (!(value instanceof Type)) {
           value = new Type(value)
         }
+
         return super.set(name, value)
       } else {
         throw new Error(`Unknown property: ${name}`)

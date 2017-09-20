@@ -24,7 +24,7 @@ function fixedBuffer (length) {
      * @param {?String} encoding
      */
     constructor (obj, encoding) {
-      var _raw
+      let _raw
 
       if (!encoding) {
         // Allow initializations like `SizedBuffer({ hex: 'abcdef' })`,

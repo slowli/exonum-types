@@ -200,7 +200,7 @@ export function initType (Type, { name, typeLength, proxiedMethods }) {
  */
 export function getMethodNames (obj) {
   return Object.getOwnPropertyNames(obj).filter(name => {
-    var descriptor = Object.getOwnPropertyDescriptor(obj, name)
+    const descriptor = Object.getOwnPropertyDescriptor(obj, name)
     return name !== 'constructor' &&
       name[0] !== '_' && // usually used for "private" APIs
       typeof descriptor.value === 'function'
