@@ -158,7 +158,7 @@ export default initFactory(union, {
 
 function unionName (variants) {
   const varDescription = variants
-    .map(variant => `${variant.name}:${variant.type}`)
+    .map(variant => variant.type.inspect())
     .join(' | ')
   return `(${varDescription})`
 }
