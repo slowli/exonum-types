@@ -5,6 +5,7 @@ import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
 import TypeResolver, { dummyResolver, validateAndResolveFields } from '../../src/lowlevel/TypeResolver'
+import Bool from '../../src/lowlevel/Bool'
 import Str from '../../src/lowlevel/Str'
 import array from '../../src/lowlevel/array'
 import fixedBuffer from '../../src/lowlevel/fixedBuffer'
@@ -272,6 +273,149 @@ describe('TypeResolver', () => {
 
   it('should fail on non-sensical type spec', () => {
     expect(() => resolver.resolve(5)).to.throw(/invalid.*spec/i)
+  })
+
+  it('should create a type factory from spec', () => {
+    resolver = resolver.addNativeType('Uint32', uinteger(4))
+      .addFactories(FACTORIES)
+
+    resolver = resolver.addTypes([{
+      name: 'list',
+      factory: {
+        typeParams: [{ name: 'T', type: 'type' }],
+        option: {
+          struct: [
+            { name: 'head', type: { typeParam: 'T' } },
+            { name: 'tail', type: { list: { typeParam: 'T' } } }
+          ]
+        }
+      }
+    }])
+
+    expect(resolver.factories.has('list')).to.be.true()
+
+    const StrList = resolver.resolve({ list: Str })
+    expect(StrList).to.satisfy(isExonumType)
+    expect(StrList.inspect()).to.equal('(None | [Str, list<Str>])')
+
+    expect(new StrList(['foo', ['bar', null]]).toJSON()).to.deep.equal({
+      head: 'foo',
+      tail: { head: 'bar', tail: null }
+    })
+
+    const StructList = resolver.resolve({
+      list: {
+        struct: [
+          { name: 'x', type: 'Uint32' },
+          { name: 'y', type: 'Uint32' }
+        ]
+      }
+    })
+
+    expect(StructList).to.satisfy(isExonumType)
+    expect(StructList.inspect()).to.equal('(None | [[Uint32, Uint32], list<[Uint32, Uint32]>])')
+
+    // Check caching
+    expect(resolver.resolve({ list: Str })).to.equal(StrList)
+
+    const structList = StructList.from({
+      head: [5, 6],
+      tail: {
+        head: [4, 3],
+        tail: [[2, 1], null]
+      }
+    })
+
+    expect(structList.some.head.x).to.equal(5)
+    expect(structList.some.head.y).to.equal(6)
+    expect(structList.some.tail.some.head.toJSON()).to.deep.equal({ x: 4, y: 3 })
+
+    const SuperList = resolver.resolve({
+      list: { list: Str }
+    })
+    expect(SuperList).to.satisfy(isExonumType)
+
+    const superList = SuperList.from([
+      ['abc', null],
+      [
+        ['def', ['ghi', ['jkl', null]]], null
+      ]
+    ])
+
+    expect(superList.some.head.toJSON()).to.deep.equal({ head: 'abc', tail: null })
+    expect(superList.some.tail.some.head.toJSON()).to.deep.equal({
+      head: 'def',
+      tail: {
+        head: 'ghi',
+        tail: { head: 'jkl', tail: null }
+      }
+    })
+  })
+
+  it('should resolve factories using other factories', () => {
+    resolver = resolver.addNativeTypes({
+      Uint32: uinteger(4)
+    }).addFactories(FACTORIES)
+
+    resolver = resolver.addTypes([{
+      name: 'point',
+      factory: {
+        typeParams: [{ name: 'T', type: 'type' }],
+        struct: [
+          { name: 'x', type: { typeParam: 'T' } },
+          { name: 'y', type: { typeParam: 'T' } }
+        ]
+      }
+    }, {
+      name: 'wArray',
+      factory: {
+        typeParams: [{ name: 'T', type: 'type' }],
+        array: {
+          struct: [
+            { name: 'w', type: { uinteger: 8 } },
+            { name: 'obj', type: { typeParam: 'T' } }
+          ]
+        }
+      }
+    }])
+
+    const WPoints = resolver.resolve({ wArray: { point: 'Uint32' } })
+    expect(WPoints).to.satisfy(isExonumType)
+
+    const wPoints = WPoints.from([
+      { w: 25, obj: [2, 3] },
+      { w: 100, obj: [100, 101] }
+    ])
+
+    expect(wPoints.count()).to.equal(2)
+    expect(wPoints.get(0).toJSON()).to.deep.equal({ w: 25, obj: { x: 2, y: 3 } })
+    expect(wPoints.get(1).serialize()).to.equalBytes(
+      '6400000000000000' + // w
+      '64000000' + // obj.x
+      '65000000' // obj.y
+    )
+
+    // Check that Point still works
+    const UnionPoint = resolver.resolve({
+      point: {
+        union: [
+          { name: 'u32', type: 'Uint32' },
+          { name: 'bool', type: Bool }
+        ]
+      }
+    })
+    expect(UnionPoint).to.satisfy(isExonumType)
+
+    const p = new UnionPoint([ { u32: 32767 }, { bool: true } ])
+    expect(p.x.type).to.equal('u32')
+    expect(p.y.bool).to.be.true()
+    expect(p.y.u32).to.be.undefined()
+    expect(p.serialize()).to.equalBytes(
+      '10000000' + '05000000' + // segment for x
+      '15000000' + '02000000' + // segment for y
+      '00' + 'ff7f0000' + // marker + x.u32
+      '01' + '01' // marker + y.bool
+    )
   })
 })
 
