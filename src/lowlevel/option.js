@@ -24,4 +24,14 @@ function option (Type, resolver) {
   }
 }
 
-export default initFactory(option, { name: 'option' })
+export default initFactory(option, {
+  name: 'option',
+
+  prepare (Type, resolver) {
+    return resolver.resolve(Type)
+  },
+
+  typeTag (Type) {
+    return Type
+  }
+})

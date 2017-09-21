@@ -31,7 +31,7 @@ describe('placeholder', () => {
   describe('inspect', () => {
     it('should describe the type', () => {
       const P = placeholder()
-      expect(P.inspect()).to.equal('Placeholder')
+      expect(P.inspect()).to.equal('[Exonum type]')
     })
   })
 

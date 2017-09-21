@@ -6,11 +6,11 @@ export function isPlaceholder (maybePlaceholder) {
   return getKind(maybePlaceholder) === 'placeholder'
 }
 
-export default function placeholder () {
+export default function placeholder (typeName = '[Exonum type]') {
   const emitter = new EventEmitter()
 
   class Placeholder extends createType({
-    name: 'Placeholder',
+    name: typeName,
     typeLength: undefined,
     kind: 'placeholder'
   }) {

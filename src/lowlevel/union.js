@@ -1,3 +1,5 @@
+import { List } from 'immutable'
+
 import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
 import { validateAndResolveFields } from './TypeResolver'
@@ -41,16 +43,7 @@ export function parseUnion (obj, marker, variantNames) {
  * Union type factory. Tagged union (aka enum, aka type sum) is a type,
  * instances of which belong to one of the defined variants.
  */
-function union (spec, resolver) {
-  let marker, variants
-  if (!Array.isArray(spec)) {
-    ({ marker, variants } = spec)
-  } else {
-    marker = DEFAULT_MARKER
-    variants = spec
-  }
-
-  variants = validateAndResolveFields(variants, resolver)
+function union ({ marker, variants }, resolver) {
   const variantNames = variants.map(f => f.name)
   const markerByteLength = 1
 
@@ -152,8 +145,26 @@ function union (spec, resolver) {
 }
 
 export default initFactory(union, {
-  name: 'union'
-  // TODO: typeTag
+  name: 'union',
+
+  prepare (spec, resolver) {
+    let marker, variants
+    if (!Array.isArray(spec)) {
+      ({ marker, variants } = spec)
+    } else {
+      marker = DEFAULT_MARKER
+      variants = spec
+    }
+
+    variants = validateAndResolveFields(variants, resolver)
+    return { marker, variants }
+  },
+
+  typeTag ({ variants }) {
+    return List().withMutations(l => {
+      variants.map(({ name, type }) => l.push(name, type))
+    })
+  }
 })
 
 function unionName (variants) {

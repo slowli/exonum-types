@@ -1,4 +1,4 @@
-import { Record } from 'immutable'
+import { List, Record } from 'immutable'
 
 import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
@@ -9,8 +9,6 @@ import * as segments from './segments'
  * Creates a new structure type based on the specification of its fields.
  */
 function struct (spec, resolver) {
-  spec = validateAndResolveFields(spec, resolver)
-
   const propertyNames = spec.map(f => f.name)
   const recordSpec = {}
   propertyNames.forEach(name => { recordSpec[name] = undefined })
@@ -113,8 +111,17 @@ function struct (spec, resolver) {
 }
 
 export default initFactory(struct, {
-  name: 'struct'
-  // TODO: define `typeTag`
+  name: 'struct',
+
+  prepare (fields, resolver) {
+    return validateAndResolveFields(fields, resolver)
+  },
+
+  typeTag (fields, resolver) {
+    return List().withMutations(l => {
+      fields.map(({ name, type }) => l.push(name, type))
+    })
+  }
 })
 
 /**
