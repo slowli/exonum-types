@@ -7,6 +7,11 @@ import dirtyChai from 'dirty-chai'
 import * as crypto from '../src/crypto'
 import { resolver } from '../src/std'
 import message from '../src/message'
+import types from '../src/blockchain'
+
+import blockData from './data/block.json'
+
+const { PublicKey, Precommit } = types
 
 const expect = chai
   .use(chaiBytes)
@@ -55,9 +60,11 @@ describe('Message', () => {
   describe('constructor', () => {
     it('should construct a message', () => {
       const msg = new TxTransfer({
-        from: aliceKey.pub(),
-        to: bobKey.pub(),
-        amount: 10000
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
       })
       const body = msg.body()
 
@@ -71,9 +78,11 @@ describe('Message', () => {
 
     it('should construct a complex message', () => {
       const msg = new ComplexMessage({
-        from: aliceKey.pub(),
-        foo: 'Hello',
-        bar: [ 100, -200 ]
+        body: {
+          from: aliceKey.pub(),
+          foo: 'Hello',
+          bar: [ 100, -200 ]
+        }
       })
       const body = msg.body()
 
@@ -92,9 +101,11 @@ describe('Message', () => {
 
   describe('bodyLength', () => {
     const msg = new TxTransfer({
-      from: aliceKey.pub(),
-      to: bobKey.pub(),
-      amount: 10000
+      body: {
+        from: aliceKey.pub(),
+        to: bobKey.pub(),
+        amount: 10000
+      }
     })
 
     it('should be computed correctly', () => {
@@ -105,9 +116,11 @@ describe('Message', () => {
   describe('serialize', () => {
     it('should not serialize unsigned message', () => {
       const msg = new TxTransfer({
-        from: aliceKey.pub(),
-        to: bobKey.pub(),
-        amount: 10000
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
       })
 
       expect(() => msg.serialize()).to.throw(/unsigned/i)
@@ -115,9 +128,11 @@ describe('Message', () => {
 
     it('should serialize message', () => {
       const msg = new TxTransfer({
-        from: aliceKey.pub(),
-        to: bobKey.pub(),
-        amount: 10000
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
       }).sign(aliceKey)
 
       const serialized = msg.serialize()
@@ -127,7 +142,7 @@ describe('Message', () => {
         '0000' + // networkId + protocolVersion
         '8000' + // messageId
         '0100' + // serviceId
-        '48000000' // body length
+        '92000000' // messagee length
       )
 
       expect(serialized.subarray(10, 10 + 32)).to.equalBytes(aliceKey.rawPub())
@@ -142,9 +157,11 @@ describe('Message', () => {
   describe('toJSON', () => {
     it('should convert message to standard form', () => {
       const msg = new TxTransfer({
-        from: aliceKey.pub(),
-        to: bobKey.pub(),
-        amount: 10000
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
       })
 
       expect(msg.toJSON()).to.deep.equal({
@@ -162,9 +179,11 @@ describe('Message', () => {
 
     it('should convert complex message to standard form', () => {
       const msg = new ComplexMessage({
-        from: aliceKey.pub(),
-        foo: 'Hello',
-        bar: [ 100, -200 ]
+        body: {
+          from: aliceKey.pub(),
+          foo: 'Hello',
+          bar: [ 100, -200 ]
+        }
       })
 
       expect(msg.toJSON()).to.deep.equal({
@@ -179,6 +198,22 @@ describe('Message', () => {
             x: 100, y: -200
           }
         }
+      })
+    })
+  })
+
+  describe('verify', () => {
+    const validators = blockData.validators.map(raw => PublicKey.from(raw))
+
+    it('should verify Precommit messages', () => {
+      blockData.precommits.forEach(data => {
+        const precommit = Precommit.from(data)
+
+        precommit.author = function () {
+          return validators[this.body().validator]
+        }
+
+        expect(precommit.verify()).to.be.true()
       })
     })
   })
