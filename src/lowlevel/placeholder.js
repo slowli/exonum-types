@@ -1,29 +1,28 @@
 import EventEmitter from 'events'
 
-import { initType, rawValue, setRawValue } from './common'
+import { createType, getKind } from './common'
 
 export function isPlaceholder (maybePlaceholder) {
-  return maybePlaceholder && rawValue(maybePlaceholder) &&
-    rawValue(maybePlaceholder).placeholder === true
+  return getKind(maybePlaceholder) === 'placeholder'
 }
 
 export default function placeholder () {
   const emitter = new EventEmitter()
 
-  const Placeholder = initType(class {
-    constructor () {
-      throw new Error('Placeholders should be replaced with real types')
-    }
-
+  class Placeholder extends createType({
+    name: 'Placeholder',
+    typeLength: undefined,
+    kind: 'placeholder'
+  }) {
     static replaceBy (type) {
       this.emit('replace', type)
     }
-  }, {
-    name: 'Placeholder',
-    typeLength: undefined
-  })
 
-  setRawValue(Placeholder, { placeholder: true })
+    constructor () {
+      super()
+      throw new Error('Placeholders should be replaced with real types')
+    }
+  }
 
   const proxiedMethods = [
     'on',

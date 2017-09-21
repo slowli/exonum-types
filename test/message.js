@@ -59,7 +59,7 @@ describe('Message', () => {
         to: bobKey.pub(),
         amount: 10000
       })
-      const body = msg.body
+      const body = msg.body()
 
       expect(body).to.have.property('from')
       expect(body.from).to.equalBytes(aliceKey.rawPub())
@@ -75,7 +75,7 @@ describe('Message', () => {
         foo: 'Hello',
         bar: [ 100, -200 ]
       })
-      const body = msg.body
+      const body = msg.body()
 
       expect(body.from).to.equalBytes(aliceKey.rawPub())
       expect(body.foo).to.equal('Hello')
@@ -135,7 +135,7 @@ describe('Message', () => {
       // hex represenation of `amount`
       expect(serialized.subarray(10 + 64, 10 + 72)).to.equalBytes('1027000000000000')
 
-      expect(serialized.subarray(10 + 72)).to.equalBytes(msg.signature.serialize())
+      expect(serialized.subarray(10 + 72)).to.equalBytes(msg.signature().serialize())
     })
   })
 

@@ -1,6 +1,6 @@
 import { Record } from 'immutable'
 
-import { initType, rawOrSelf } from './common'
+import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
 import { validateAndResolveFields } from './TypeResolver'
 import * as segments from './segments'
@@ -14,15 +14,22 @@ function struct (spec, resolver) {
   const propertyNames = spec.map(f => f.name)
   const recordSpec = {}
   propertyNames.forEach(name => { recordSpec[name] = undefined })
+  // The backing `Record` class
+  const Rec = Record(recordSpec)
 
   // The length of the fixed part of the structure
   const fixedLength = segments.heapStart(spec.map(f => f.type))
   // Is this structure fixed-length?
   const hasFixedLength = spec.every(f => f.type.typeLength() !== undefined)
 
-  return initType(class extends Record(recordSpec) {
+  class StructType extends createType({
+    typeLength: hasFixedLength ? fixedLength : undefined,
+    name: structName(spec)
+  }) {
     constructor (...args) {
-      super(parseInitializer(spec, args))
+      // `null` signals to opt out of external raw value exposition, e.g.,
+      // in the `get` method below
+      super(Rec(parseInitializer(spec, args, Rec)), null)
     }
 
     set (name, value) {
@@ -35,7 +42,7 @@ function struct (spec, resolver) {
           value = new Type(value)
         }
 
-        return super.set(name, value)
+        return StructType.from(rawValue(this).set(name, value))
       } else {
         throw new Error(`Unknown property: ${name}`)
       }
@@ -50,7 +57,7 @@ function struct (spec, resolver) {
      * @param {string} name
      */
     get (name) {
-      return rawOrSelf(super.get(name), true)
+      return rawOrSelf(rawValue(this).get(name), true)
     }
 
     /**
@@ -60,14 +67,14 @@ function struct (spec, resolver) {
      * @returns {ExonumType}
      */
     getOriginal (name) {
-      return super.get(name)
+      return rawValue(this).get(name)
     }
 
     byteLength () {
       return segments.byteLength(propertyNames.map(name => this.getOriginal(name)))
     }
 
-    serialize (buffer) {
+    _doSerialize (buffer) {
       return segments.serialize(buffer,
         propertyNames.map(name => this.getOriginal(name)),
         fixedLength)
@@ -90,10 +97,19 @@ function struct (spec, resolver) {
       }
       return `{ ${props.join(', ')} }`
     }
-  }, {
-    typeLength: hasFixedLength ? fixedLength : undefined,
-    name: structName(spec)
+  }
+
+  propertyNames.forEach(name => {
+    Object.defineProperty(StructType.prototype, name, {
+      enumerable: true,
+      configurable: true,
+      get: function () {
+        return this.get(name)
+      }
+    })
   })
+
+  return StructType
 }
 
 export default initFactory(struct, {
@@ -107,11 +123,14 @@ export default initFactory(struct, {
  * @param {Array<FieldSpec>} spec
  * @param {any} args
  */
-function parseInitializer (spec, args) {
+function parseInitializer (spec, args, Rec) {
   let parsed = {}
   let i
 
-  if (args.length === 1 && Array.isArray(args[0])) {
+  if (args.length === 1 && args[0] instanceof Rec) {
+    // Shortcut if we have been a fitting `Record` object
+    return args[0]
+  } if (args.length === 1 && Array.isArray(args[0])) {
     // Assume `obj` is the sequence of properties
     // in the order of their declaration in the type
     for (i = 0; i < args[0].length; i++) {

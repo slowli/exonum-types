@@ -1,4 +1,4 @@
-import { initType, rawValue, setRawValue } from './common'
+import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
 import { validateAndResolveFields } from './TypeResolver'
 
@@ -54,7 +54,10 @@ function union (spec, resolver) {
   const variantNames = variants.map(f => f.name)
   const markerByteLength = 1
 
-  const UnionType = initType(class {
+  class UnionType extends createType({
+    name: unionName(variants),
+    typeLength: undefined
+  }) {
     constructor (obj) {
       const parsed = parseUnion(obj, marker, variantNames)
       if (!parsed) {
@@ -65,7 +68,7 @@ function union (spec, resolver) {
 
       // We don't want to return raw value for external uses;
       // instead, the value may be unwrapped in `get()` (see below)
-      setRawValue(this, { value, variant: parsed[0] }, () => this)
+      super({ value, variant: parsed[0] }, null)
     }
 
     byteLength () {
@@ -84,10 +87,8 @@ function union (spec, resolver) {
      */
     get (name) {
       if (getVariant(this) !== name) return undefined
-
       const val = rawValue(this).value
-      const rawVal = rawValue(val, true)
-      return rawVal !== undefined ? rawVal : val
+      return rawOrSelf(val, true)
     }
 
     /**
@@ -101,7 +102,7 @@ function union (spec, resolver) {
       return rawValue(this).value
     }
 
-    serialize (buffer) {
+    _doSerialize (buffer) {
       buffer[0] = variantNames.indexOf(getVariant(this))
       getValue(this).serialize(buffer.subarray(1))
     }
@@ -113,9 +114,7 @@ function union (spec, resolver) {
     toString () {
       return `${getVariant(this)}(${getValue(this)})`
     }
-  }, {
-    typeLength: undefined
-  })
+  }
 
   function getVariant (union) {
     return rawValue(union).variant
@@ -156,3 +155,10 @@ export default initFactory(union, {
   name: 'union'
   // TODO: typeTag
 })
+
+function unionName (variants) {
+  const varDescription = variants
+    .map(variant => `${variant.name}:${variant.type}`)
+    .join(' | ')
+  return `(${varDescription})`
+}

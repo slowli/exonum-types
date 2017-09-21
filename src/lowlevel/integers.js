@@ -1,11 +1,5 @@
 import bigInt from 'big-integer'
-import {
-  isExonumObject,
-  initType,
-  getMethodNames,
-  rawValue,
-  setRawValue
-} from './common'
+import { isExonumObject, createType, getMethodNames, rawValue } from './common'
 import initFactory from './initFactory'
 
 const MAX_SAFE_INTEGER = bigInt(Number.MAX_SAFE_INTEGER || '9007199254740991')
@@ -35,6 +29,9 @@ function getEncoding (obj) {
   return undefined
 }
 
+const PROXIED_METHODS = getMethodNames(Object.getPrototypeOf(bigInt(0)))
+  .filter(method => method !== 'toJSON')
+
 /**
  * Instantiates a new integer type.
  *
@@ -50,7 +47,11 @@ function $integer (byteLength, signed) {
     ? bigInt(1).shiftLeft(byteLength * 8 - 1)
     : bigInt(1).shiftLeft(byteLength * 8)).minus(1)
 
-  class SizedInteger {
+  class SizedInteger extends createType({
+    typeLength: byteLength,
+    proxiedMethods: PROXIED_METHODS,
+    name: signed ? `Int${byteLength * 8}` : `Uint${byteLength * 8}`
+  }) {
     constructor (value, encoding) {
       let _raw
 
@@ -98,10 +99,11 @@ function $integer (byteLength, signed) {
       const externalValue = (_raw.gt(MAX_SAFE_INTEGER) || _raw.lt(MIN_SAFE_INTEGER))
         ? _raw
         : _raw.toJSNumber()
-      setRawValue(this, _raw, () => externalValue)
+
+      super(_raw, () => externalValue)
     }
 
-    serialize (buffer) {
+    _doSerialize (buffer) {
       let x = rawValue(this)
       if (signed && x.isNegative()) {
         x = x.minus(MIN_VALUE.multiply(2))
@@ -122,14 +124,7 @@ function $integer (byteLength, signed) {
     }
   }
 
-  const proxiedMethods = getMethodNames(Object.getPrototypeOf(bigInt(0)))
-    .filter(method => method !== 'toJSON')
-
-  return initType(SizedInteger, {
-    typeLength: byteLength,
-    proxiedMethods,
-    name: signed ? `Int${byteLength * 8}` : `Uint${byteLength * 8}`
-  })
+  return SizedInteger
 }
 
 /**

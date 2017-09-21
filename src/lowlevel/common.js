@@ -2,6 +2,10 @@ const EXONUM_KIND_PROP = typeof Symbol !== 'undefined'
   ? Symbol.for('exonum.kind')
   : '__exonumKind'
 
+export function getKind (obj) {
+  return !obj ? undefined : obj[EXONUM_KIND_PROP]
+}
+
 export function setKind (obj, kind) {
   Object.defineProperty(obj, EXONUM_KIND_PROP, { value: kind })
   return obj
@@ -15,7 +19,7 @@ export function setKind (obj, kind) {
  */
 export function isExonumFactory (maybeExonumFactory) {
   return typeof maybeExonumFactory === 'function' &&
-    maybeExonumFactory[EXONUM_KIND_PROP] === 'factory'
+    getKind(maybeExonumFactory) === 'factory'
 }
 
 /**
@@ -25,7 +29,7 @@ export function isExonumFactory (maybeExonumFactory) {
  * @returns {boolean}
  */
 export function isExonumType (maybeExonumType) {
-  return maybeExonumType && maybeExonumType[EXONUM_KIND_PROP] === 'type'
+  return getKind(maybeExonumType) === 'type'
 }
 
 /**
@@ -35,7 +39,7 @@ export function isExonumType (maybeExonumType) {
  * @returns {boolean}
  */
 export function isExonumObject (maybeExonumObj) {
-  return maybeExonumObj && maybeExonumObj[EXONUM_KIND_PROP] === 'object'
+  return getKind(maybeExonumObj) === 'object'
 }
 
 const EXONUM_TYPEREF_PROP = typeof Symbol !== 'undefined'
@@ -68,7 +72,7 @@ const EXONUM_RAW_PROP = typeof Symbol !== 'undefined'
  *   A function to export the raw value for external use. If the raw value is not
  *   immutable, this function should clone the "internal" raw value (hence the name).
  */
-export function setRawValue (obj, raw, clone = () => raw) {
+export function setRawValue (obj, raw, clone) {
   Object.defineProperty(obj, EXONUM_RAW_PROP, { value: { data: raw, clone } })
 }
 
@@ -99,7 +103,14 @@ export function rawValue (obj, externalUse = false) {
  *   The stored raw value, or the original object
  */
 export function rawOrSelf (obj, externalUse = false) {
-  return (obj && obj[EXONUM_RAW_PROP] !== undefined) ? rawValue(obj, externalUse) : obj
+  if (obj && obj[EXONUM_RAW_PROP] !== undefined) {
+    if (externalUse && !obj[EXONUM_RAW_PROP].clone) {
+      // The Exonum type has opted out from exposing the raw value externally
+      return obj
+    }
+    return rawValue(obj, externalUse)
+  }
+  return obj
 }
 
 // For zero-arity functions only!
@@ -139,10 +150,13 @@ export function memoize (fn) {
  * @param {?Array<string>} options.proxiedMethods
  *   Methods to proxy from the `rawValue()` of the type instances.
  */
-export function initType (Type, { name, typeLength, proxiedMethods }) {
-  if (!name) name = '[Exonum type]'
-
-  class ExonumType extends Type {
+export function createType ({
+  name = '[Exonum type]',
+  typeLength = undefined,
+  proxiedMethods = [],
+  kind = 'type'
+}) {
+  class ExonumType {
     static inspect () {
       return name
     }
@@ -162,20 +176,32 @@ export function initType (Type, { name, typeLength, proxiedMethods }) {
       return new this(...arguments)
     }
 
+    constructor (rawValue, clone = () => rawValue) {
+      if (rawValue !== undefined) {
+        setRawValue(this, rawValue, clone)
+      }
+    }
+
     byteLength () {
-      return (typeLength !== undefined) ? typeLength : super.byteLength()
+      return typeLength
     }
 
     serialize (buffer) {
       if (!buffer) buffer = new Uint8Array(this.byteLength())
-      super.serialize(buffer)
+      this._doSerialize(buffer)
       return buffer
+    }
+
+    _doSerialize (buffer) {
+      throw new Error('Not implemented; please redefine `_doSerialize()` in child classes')
+    }
+
+    toJSON () {
+      throw new Error('Not implemented; please redefine `toJSON()` in child classes')
     }
   }
 
-  ExonumType.prototype.byteLength = memoize(ExonumType.prototype.byteLength)
-
-  Object.defineProperty(ExonumType, EXONUM_KIND_PROP, { value: 'type' })
+  Object.defineProperty(ExonumType, EXONUM_KIND_PROP, { value: kind })
   Object.defineProperty(ExonumType.prototype, EXONUM_KIND_PROP, { value: 'object' })
   Object.defineProperty(ExonumType.prototype, EXONUM_TYPEREF_PROP, { value: ExonumType })
 

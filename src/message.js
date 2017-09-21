@@ -1,6 +1,6 @@
 import struct from './lowlevel/struct'
 import * as crypto from './crypto'
-import { initType } from './lowlevel/common'
+import { createType, rawValue } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
 import std, { resolver } from './std'
 
@@ -14,7 +14,6 @@ function message ({
   protocolVersion = DEFAULT_PROTO_VER,
   serviceId,
   messageId,
-  name = 'Message',
   body: BodyType
 }, resolver) {
   // Allow to specify message body as a `struct` specification
@@ -28,12 +27,18 @@ function message ({
   }
   const authorField = authorFields[0]
 
-  const MessageType = initType(class {
+  class MessageType extends createType({
+    name: `Message<${BodyType.inspect()}>`,
+    typeLength: BodyType.typeLength() === undefined
+      ? undefined
+      : (headLength + BodyType.typeLength() + sigLength)
+  }) {
     constructor (body, maybeSignature) {
-      this.body = BodyType.from(body)
-      if (maybeSignature) {
-        this.signature = Signature.from(maybeSignature)
-      }
+      const signature = maybeSignature ? Signature.from(maybeSignature) : undefined
+      super({
+        signature,
+        body: BodyType.from(body)
+      }, null)
     }
 
     header () {
@@ -46,25 +51,33 @@ function message ({
       })
     }
 
+    body () {
+      return rawValue(this).body
+    }
+
+    signature () {
+      return rawValue(this).signature
+    }
+
     bodyLength () {
-      return this.body.byteLength()
+      return this.body().byteLength()
     }
 
     serializeForSigning () {
       const buffer = new Uint8Array(this.byteLength() - sigLength)
       this.header().serialize(buffer.subarray(0, headLength))
-      this.body.serialize(buffer.subarray(headLength))
+      this.body().serialize(buffer.subarray(headLength))
       return buffer
     }
 
-    serialize (buffer) {
-      if (!this.signature) {
+    _doSerialize (buffer) {
+      if (!this.signature()) {
         throw new Error('Attempt to serialize unsigned message')
       }
 
       this.header().serialize(buffer.subarray(0, headLength))
-      this.body.serialize(buffer.subarray(headLength, buffer.length - sigLength))
-      this.signature.serialize(buffer.subarray(buffer.length - sigLength))
+      this.body().serialize(buffer.subarray(headLength, buffer.length - sigLength))
+      this.signature().serialize(buffer.subarray(buffer.length - sigLength))
     }
 
     byteLength () {
@@ -78,17 +91,17 @@ function message ({
      * @returns {PublicKey}
      */
     author () {
-      return this.body[authorField]
+      return this.body()[authorField]
     }
 
     sign (privateKey) {
-      return new MessageType(this.body, crypto.sign(this.serializeForSigning(), privateKey))
+      return new MessageType(this.body(), crypto.sign(this.serializeForSigning(), privateKey))
     }
 
     verify () {
-      if (!this.__signature) return false
+      if (!this.signature()) return false
       return crypto.verify(this.serializeForSigning(),
-        this.signature,
+        this.signature(),
         this.author())
     }
 
@@ -98,21 +111,16 @@ function message ({
         protocolVersion,
         serviceId,
         messageId,
-        body: this.body.toJSON()
+        body: this.body().toJSON()
       }
 
-      if (this.signature) {
-        json.signature = this.signature.toJSON()
+      if (this.signature()) {
+        json.signature = this.signature().toJSON()
       }
 
       return json
     }
-  }, {
-    name,
-    typeLength: BodyType.typeLength() === undefined
-      ? undefined
-      : (headLength + BodyType.typeLength() + sigLength)
-  })
+  }
 
   return MessageType
 }

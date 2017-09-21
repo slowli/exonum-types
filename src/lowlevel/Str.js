@@ -1,4 +1,4 @@
-import { rawValue, setRawValue, getMethodNames, initType } from './common'
+import { rawValue, getMethodNames, createType } from './common'
 
 /**
  * Calculates string length in bytes.
@@ -57,12 +57,16 @@ function serializeString (str, buffer) {
   }
 }
 
-export default initType(class {
+export default class Str extends createType({
+  typeLength: undefined,
+  proxiedMethods: getMethodNames(String.prototype),
+  name: 'Str'
+}) {
   constructor (obj) {
-    setRawValue(this, obj.toString())
+    super(obj.toString())
   }
 
-  serialize (buffer) {
+  _doSerialize (buffer) {
     serializeString(rawValue(this), buffer)
   }
 
@@ -73,8 +77,4 @@ export default initType(class {
   byteLength () {
     return stringLength(rawValue(this))
   }
-}, {
-  typeLength: undefined,
-  proxiedMethods: getMethodNames(String.prototype),
-  name: 'Str'
-})
+}

@@ -1,7 +1,7 @@
 import { List } from 'immutable'
 
 import initFactory from './initFactory'
-import { initType, rawValue, setRawValue, rawOrSelf } from './common'
+import { createType, rawValue, rawOrSelf } from './common'
 import { uinteger } from './integers'
 import * as segments from './segments'
 
@@ -10,7 +10,10 @@ const SizeType = uinteger(4)
 function array (ElementType, resolver) {
   ElementType = resolver.resolve(ElementType)
 
-  const ExonumArray = initType(class {
+  class ExonumArray extends createType({
+    name: `Array<${ElementType.inspect()}>`,
+    typeLength: undefined
+  }) {
     constructor (arr) {
       let elements
       if (!arr) {
@@ -24,11 +27,11 @@ function array (ElementType, resolver) {
 
       const list = List(elements)
       const count = SizeType.from(list.count())
-      setRawValue(this, {
+      super({
         list,
         count,
         serialization: list.unshift(count)
-      })
+      }, null)
     }
 
     byteLength () {
@@ -55,7 +58,7 @@ function array (ElementType, resolver) {
       return rawValue(this).list
     }
 
-    serialize (buffer) {
+    _doSerialize (buffer) {
       // XXX: this differs from the current serialization protocol!
       segments.serialize(buffer, rawValue(this).serialization)
     }
@@ -63,10 +66,7 @@ function array (ElementType, resolver) {
     toJSON () {
       return rawValue(this).list.map(x => x.toJSON()).toJS()
     }
-  }, {
-    name: `Array<${ElementType.inspect()}>`,
-    typeLength: undefined
-  })
+  }
 
   return ExonumArray
 }

@@ -1,6 +1,6 @@
 import { List } from 'immutable'
 
-import { rawValue, setRawValue, isExonumObject, initType, memoize } from './common'
+import { rawValue, isExonumObject, createType, memoize } from './common'
 import initFactory from './initFactory'
 import { validateString, encode, decode, getEncoding } from './bufferEncodings'
 
@@ -18,7 +18,10 @@ function isBuffer (obj) {
  * @api public
  */
 function fixedBuffer (length) {
-  class FixedBuffer {
+  class FixedBuffer extends createType({
+    typeLength: length,
+    name: `Buffer<${length}>`
+  }) {
     /**
      * @param {String | Array<number> | Uint8Array | FixedBuffer} obj
      * @param {?String} encoding
@@ -67,10 +70,10 @@ function fixedBuffer (length) {
 
       // As `Uint8Array` instances are mutable, we need to specify an explicit cloning
       // procedure
-      setRawValue(this, _raw, () => _raw.slice(0))
+      super(_raw, () => _raw.slice(0))
     }
 
-    serialize (buffer) {
+    _doSerialize (buffer) {
       if (buffer.length !== length) {
         throw new Error(`Unexpected buffer length: ${buffer.length}; ${length} expected`)
       }
@@ -108,10 +111,7 @@ function fixedBuffer (length) {
 
   FixedBuffer.prototype.hashCode = memoize(FixedBuffer.prototype.hashCode)
 
-  return initType(FixedBuffer, {
-    typeLength: length,
-    name: `Buffer<${length}>`
-  })
+  return FixedBuffer
 }
 
 export default initFactory(fixedBuffer, {

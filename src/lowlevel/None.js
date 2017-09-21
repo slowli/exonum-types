@@ -1,11 +1,18 @@
-import { initType } from './common'
+import { createType } from './common'
 
 /**
  * None is a zero-length type which is used where the type is demanded semantically,
  * but otherwise shouldn't be there (e.g., in `option`s).
  */
-class None {
-  serialize (buffer) {
+export default class None extends createType({
+  name: 'None',
+  typeLength: 0
+}) {
+  constructor (any) {
+    super()
+  }
+
+  _doSerialize (buffer) {
     // `None` is not serialized
   }
 
@@ -13,8 +20,3 @@ class None {
     return null
   }
 }
-
-export default initType(None, {
-  name: 'None',
-  typeLength: 0
-})
