@@ -1,6 +1,7 @@
-import { Map as ImmutableMap } from 'immutable'
+import { List, Stack, Map as ImmutableMap } from 'immutable'
 
 import placeholder, { isPlaceholder } from './placeholder'
+import initFactory from './initFactory'
 import { isExonumFactory, isExonumType, setKind } from './common'
 import { parseUnion } from './union'
 
@@ -110,14 +111,11 @@ export default class TypeResolver {
     return undefined
   }
 
-  _addPendingType (name) {
-    if (!this._pendingTypes) {
-      // `_addPendingType` invoked outside of `addTypes()`.
-      // This is probably not a problem
-      return
-    }
-
-    this._pendingTypes = this._pendingTypes.set(name, placeholder())
+  /**
+   * Adds a pending type under a specified key and with a specified name.
+   */
+  _addPendingType (key, name) {
+    this._pendingTypes = (this._pendingTypes || ImmutableMap()).set(key, placeholder(name))
   }
 
   _resolvePendingType (name, type) {
@@ -130,29 +128,79 @@ export default class TypeResolver {
     this._pendingTypes = this._pendingTypes.set(name, type)
   }
 
+  _bindTypeParams (factoryName, params) {
+    Object.keys(params).forEach(name => {
+      const Type = params[name]
+
+      if (!isExonumType(Type)) {
+        throw new TypeError('`_bindTypeParams` should bind Exonum types')
+      }
+
+      const key = List.of(factoryName, name)
+
+      if (this._typeParams && this._typeParams.has(key)) {
+        throw new Error(`Attempt to rebind type param ${name} in ${factoryName}; old value: ${this._typeParams.get(key)}, new value: ${Type}`)
+      }
+    })
+
+    this._typeParams = (this._typeParams || ImmutableMap()).merge(
+      Object.keys(params).map(name => [List.of(factoryName, name), params[name]])
+    )
+
+    this._factories = (this._factories || Stack()).push(factoryName)
+  }
+
+  _unbindTypeParams (factoryName) {
+    if (this._factories.peek() !== factoryName) {
+      throw new Error(`Attempt to unbind type params for a wrong factory: ${factoryName} when ${this._factories.peek()} was expected`)
+    }
+
+    this._factories = this._factories.pop()
+    this._typeParams = this._typeParams.filterNot((_, key) => key.get(0) === factoryName)
+  }
+
   addTypes (types) {
-    const typeNames = types.map(type => type.name)
+    // TODO: check existing types and factories
+
+    const typeNames = types.filter(type => !type.factory)
+      .map(type => type.name)
     this._pendingTypes = ImmutableMap().withMutations(m => {
       typeNames.forEach(name => {
-        m.set(name, placeholder())
+        m.set(name, placeholder(name))
       })
     })
 
-    // Then, create types
-    types.forEach(type => {
-      const name = type.name
-      // TODO: parse other metadata (e.g., documentation)
+    let newTypes
+    let newFactories = ImmutableMap()
 
-      type = createType.call(this, type)
-      this._resolvePendingType(name, type)
-    })
+    try {
+      // Then, create types
+      types.forEach(type => {
+        const name = type.name
+        // TODO: parse other metadata (e.g., documentation)
 
-    const newTypes = this.types.mergeWith((oldVal, newVal, key) => {
-      throw new Error(`Type ${key} already exists`)
-    }, this._pendingTypes)
+        if (type.factory) {
+          newFactories = newFactories.set(name, createFactory(name, type.factory))
+        } else {
+          type = createType.call(this, type)
+          this._resolvePendingType(name, type)
+        }
+      })
 
-    delete this._pendingTypes
-    return new TypeResolver(newTypes, this.factories)
+      newTypes = this.types.mergeWith((oldVal, newVal, key) => {
+        throw new Error(`Type ${key} already exists`)
+      }, this._pendingTypes)
+    } finally {
+      // Cleanup pending types which otherwise lead to unpredicatble effects
+      // and occupy unnecessary memory
+      delete this._pendingTypes
+    }
+
+    newFactories = this.factories.mergeWith((oldVal, newVal, key) => {
+      throw new Error(`Factory ${key} already exists`)
+    }, newFactories)
+
+    return new TypeResolver(newTypes, newFactories)
   }
 }
 
@@ -237,6 +285,22 @@ function createType (spec) {
     }
     return type
   } else if (typeof spec === 'object') {
+    if ('typeParam' in spec) {
+      // The specification is a reference to a type param
+
+      const factory = this._factories.peek()
+      if (!factory) {
+        throw new Error('Type param outside of factory declaration')
+      }
+
+      const type = this._typeParams.get(List.of(factory, spec.typeParam))
+      if (!type) {
+        throw new Error(`Type param not bound: ${spec.typeParam} in ${factory}`)
+      }
+
+      return type
+    }
+
     // We have a generic type
     let factory = parseUnion(spec, FACTORY_MARKER, this.factories.keySeq())
 
@@ -251,4 +315,74 @@ function createType (spec) {
   } else {
     throw new Error('Invalid type specification')
   }
+}
+
+/**
+ * Validates type parameter specification and resolve them to Exonum types.
+ *
+ * @param {TypeSpec | {[key: string]: TypeSpec}} params
+ *   If there is a single type parameter in the spec, this should be this parameter.
+ *   Otherwise, this should be an object with properties corresponding to parameter names.
+ * @param {Array<{name: string}>} spec
+ * @param {TypeResolver} resolver
+ */
+function validateAndResolveParams (params, spec, resolver) {
+  if (spec.length === 1) {
+    params = { [spec[0].name]: params }
+  }
+
+  const resolvedParams = {}
+  spec.forEach(({ name }) => {
+    if (!(name in params)) {
+      throw new Error(`Missing type parameter ${name}`)
+    }
+
+    resolvedParams[name] = resolver.resolve(params[name])
+  })
+
+  return resolvedParams
+}
+
+function createFactory (factoryName, spec) {
+  const { typeParams } = spec
+
+  const description = Object.assign({}, spec)
+  delete description.typeParams
+
+  if (!Array.isArray(typeParams)) {
+    throw new Error('Invalid factory spec; typeParams field is not an array')
+  }
+
+  typeParams.forEach(({ name, type }) => {
+    if (typeof name !== 'string') {
+      throw new Error('Missing name for a type param in factory spec')
+    }
+  })
+
+  function factory (arg, resolver) {
+    resolver._bindTypeParams(factoryName, arg)
+
+    try {
+      return resolver.resolve(description)
+    } finally {
+      resolver._unbindTypeParams(factoryName)
+    }
+  }
+
+  return initFactory(factory, {
+    name: factoryName,
+
+    prepare (arg, resolver) {
+      return validateAndResolveParams(arg, typeParams, resolver)
+    },
+
+    typeTag (arg) {
+      return List(typeParams.map(({ name }) => arg[name]))
+    },
+
+    typeName (arg) {
+      const typeDescription = typeParams.map(({ name }) => arg[name].inspect()).join(', ')
+      return `${factoryName}<${typeDescription}>`
+    }
+  })
 }

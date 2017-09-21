@@ -11,16 +11,23 @@ const DUMMY_RESOLVER = dummyResolver()
  *
  * @returns {Function} initialized factory
  */
-export default function initFactory (factory, { name, typeTag = (arg) => arg } = {}) {
+export default function initFactory (factory, {
+  name,
+  prepare = (arg, resolver) => arg,
+  typeTag = (arg) => arg,
+  typeName = (arg) => `${name}<?>`
+} = {}) {
   const memoizedFactory = (arg, resolver) => {
     if (!resolver) resolver = DUMMY_RESOLVER
+
+    arg = prepare(arg, resolver) // here, types should be resolved, etc.
 
     const fullTag = List.of(name, typeTag(arg))
 
     if (resolver._hasType(fullTag)) {
       return resolver._getType(fullTag)
     } else {
-      resolver._addPendingType(fullTag)
+      resolver._addPendingType(fullTag, typeName(arg))
       const type = factory(arg, resolver)
       resolver._resolvePendingType(fullTag, type)
 
