@@ -40,15 +40,15 @@ describe('struct', () => {
 
   describe('inspect', () => {
     it('should describe simple struct', () => {
-      expect(Type.inspect()).to.equal('(Uint32, Int64)')
+      expect(Type.inspect()).to.equal('[Uint32, Int64]')
     })
 
     it('should describe simple struct', () => {
-      expect(Wallet.inspect()).to.equal('(Buffer<32>, Str, Uint64, Buffer<32>)')
+      expect(Wallet.inspect()).to.equal('[Buffer<32>, Str, Uint64, Buffer<32>]')
     })
 
     it('should describe complex struct', () => {
-      expect(ComplexType.inspect()).to.equal('(Int16, (Str, Uint8), Str)')
+      expect(ComplexType.inspect()).to.equal('[Int16, [Str, Uint8], Str]')
     })
   })
 

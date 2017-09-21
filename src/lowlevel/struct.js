@@ -158,5 +158,5 @@ function parseInitializer (spec, args, Rec) {
 
 function structName (spec) {
   const fields = spec.map(field => field.type.toString()).join(', ')
-  return `(${fields})`
+  return `[${fields}]`
 }
