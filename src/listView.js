@@ -1,7 +1,7 @@
 import { OrderedMap } from 'immutable'
 
-import { memoize, rawValue, setRawValue } from './lowlevel/common'
-import { resolver as stdResolver } from './std'
+import { memoize, rawValue, createType } from './lowlevel/common'
+import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
 
 const LIST_VIEW_NODE_DEF = {
@@ -27,7 +27,7 @@ const LIST_VIEW_NODE_DEF = {
  */
 function listViewNode (ValType, resolver) {
   // XXX: works only with "native" type definitions
-  return stdResolver.addNativeType('T', ValType)
+  return resolver.addNativeType('T', ValType)
     .addTypes([
       LIST_VIEW_NODE_DEF
     ]).resolve('ListViewNode')
@@ -121,10 +121,13 @@ const PROXIED_METHODS = [
   'entrySeq'
 ]
 
-export default function listView (ValType, resolver) {
+function listView (ValType, resolver) {
+  ValType = resolver.resolve(ValType)
   const Node = listViewNode(ValType, resolver)
 
-  const ListView = class {
+  class ListView extends createType({
+    name: `ListView<${ValType.inspect()}>`
+  }) {
     constructor (obj) {
       const root = Node.from(obj)
       const { depth, values } = parseTreeStructure(root)
@@ -133,7 +136,7 @@ export default function listView (ValType, resolver) {
       // XXX: This loses original Exonum-typed values. Suppose this is OK?
       const map = OrderedMap(values.map(node => [node.pos, node.val]))
 
-      setRawValue(this, { map, root, depth })
+      super({ map, root, depth })
     }
 
     rootHash () {
@@ -156,3 +159,5 @@ export default function listView (ValType, resolver) {
 
   return ListView
 }
+
+export default initFactory(listView, { name: 'listView' })
