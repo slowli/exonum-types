@@ -14,6 +14,7 @@ function message ({
   protocolVersion = DEFAULT_PROTO_VER,
   serviceId,
   messageId,
+  name = 'Message',
   body: BodyType
 }, resolver) {
   // Allow to specify message body as a `struct` specification
@@ -33,8 +34,8 @@ function message ({
       ? undefined
       : (headLength + BodyType.typeLength() + sigLength)
   }) {
-    constructor (body, maybeSignature) {
-      const signature = maybeSignature ? Signature.from(maybeSignature) : undefined
+    constructor ({ body, signature }) {
+      signature = signature ? Signature.from(signature) : undefined
       super({
         signature,
         body: BodyType.from(body)
@@ -47,7 +48,7 @@ function message ({
         protocolVersion,
         serviceId,
         messageId,
-        length: this.bodyLength()
+        length: this.byteLength()
       })
     }
 
@@ -95,11 +96,15 @@ function message ({
     }
 
     sign (privateKey) {
-      return new MessageType(this.body(), crypto.sign(this.serializeForSigning(), privateKey))
+      return new MessageType({
+        body: this.body(),
+        signature: crypto.sign(this.serializeForSigning(), privateKey)
+      })
     }
 
     verify () {
       if (!this.signature()) return false
+
       return crypto.verify(this.serializeForSigning(),
         this.signature(),
         this.author())
@@ -119,6 +124,10 @@ function message ({
       }
 
       return json
+    }
+
+    toString () {
+      return `${name}:${this.body()}`
     }
   }
 
