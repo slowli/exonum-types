@@ -135,14 +135,6 @@ export function memoize (fn) {
 /**
  * Initializes an Exonum type by attaching some sensible default method implementations.
  *
- * @param {Class<ExonumBase>} Type
- *   The base class to build the Exonum type upon. Should implement the following methods:
- *
- *   - `serialize(buffer: Uint8Array): void`
- *   - `toJSON(): any`
- *
- *   If the type has variable serialization length, `byteLength(): number` method should
- *   be defined as well.
  * @param {Object} options
  * @param {?string} options.name
  *   Type name; used to get string representation of the class
