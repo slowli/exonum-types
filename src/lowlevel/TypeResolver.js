@@ -1,6 +1,6 @@
 import { List, Stack, Map as ImmutableMap } from 'immutable'
 
-import placeholder, { isPlaceholder } from './placeholder'
+import placeholder from './placeholder'
 import initFactory from './initFactory'
 import { isExonumFactory, isExonumType, setKind } from './common'
 
@@ -72,18 +72,8 @@ export default class TypeResolver {
     return new TypeResolver(this.types, newFactories)
   }
 
-  resolve (type, callback) {
+  resolve (type) {
     type = createType.call(this, type)
-    if (isPlaceholder(type)) {
-      if (!callback) {
-        // Resolved type is placeholder, but there is no callback to replace it in the future
-        // XXX: warn somehow?
-      } else {
-        type.on('replace', callback)
-      }
-    }
-
-    if (callback) callback(type)
     return type
   }
 
@@ -124,9 +114,15 @@ export default class TypeResolver {
 
   /**
    * Adds a pending type under a specified key and with a specified name.
+   *
+   * @param {ValueObject} typeTag
+   *   globally unique type identifier
+   * @param {string} name
+   *   human-readable type name
    */
-  _addPendingType (key, name) {
-    this._pendingTypes = (this._pendingTypes || ImmutableMap()).set(key, placeholder(name))
+  _addPendingType (typeTag, name) {
+    this._pendingTypes = (this._pendingTypes || ImmutableMap()).set(typeTag,
+      placeholder(name, typeTag))
   }
 
   _resolvePendingType (name, type) {
@@ -280,7 +276,7 @@ export function validateAndResolveFields (fields, resolver) {
     }
 
     const resolvedProp = Object.assign({}, prop)
-    resolver.resolve(prop.type, type => { resolvedProp.type = type })
+    resolvedProp.type = resolver.resolve(prop.type)
     resolvedFields.push(resolvedProp)
   })
 
