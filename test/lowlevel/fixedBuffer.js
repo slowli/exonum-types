@@ -7,13 +7,12 @@ import dirtyChai from 'dirty-chai'
 
 import fixedBuffer from '../../src/lowlevel/fixedBuffer'
 import { rawValue } from '../../src/lowlevel/common'
+import std from '../../src/std'
 
 const expect = chai
   .use(chaiBytes)
   .use(dirtyChai)
   .expect
-
-// TODO: type equality
 
 describe('fixedBuffer', () => {
   const ShortBuffer = fixedBuffer(4)
@@ -215,6 +214,15 @@ describe('fixedBuffer', () => {
 
       let map = Map([[x, 1]])
       expect(map.get(y)).to.equal(1)
+    })
+  })
+
+  describe('static equals', () => {
+    it('should compare fixedBuffer types correctly', () => {
+      expect(fixedBuffer(4).equals(fixedBuffer(4))).to.be.true()
+      expect(fixedBuffer(4).equals(fixedBuffer(5))).to.be.false()
+      expect(fixedBuffer(32).equals(std.PublicKey)).to.be.true()
+      expect(std.Hash.equals(std.PublicKey)).to.be.true()
     })
   })
 })
