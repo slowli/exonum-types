@@ -81,10 +81,20 @@ describe('TypeResolver', () => {
   })
 
   it('should fail on unknown factory', () => {
-    // The `uinteger` factory is not enabled
+    // The `uinteger` factory is not enabled here
     expect(() => resolver.addTypes([
       { name: 'Uint8', uinteger: 1 }
-    ])).to.throw(/factory/i)
+    ])).to.throw(/factory.*\buinteger\b/i)
+  })
+
+  it('should fail on invalid type spec', () => {
+    expect(() => resolver.addFactories(FACTORIES).addTypes([
+      { name: 'Uint8', uinteger: 1, foo: 'bar' }
+    ])).to.throw(/expected an object with.*1 key/)
+  })
+
+  it('should fail on non-sensical type spec', () => {
+    expect(() => resolver.resolve(5)).to.throw(/invalid.*spec/i)
   })
 
   it('should create integer type', () => {
@@ -271,8 +281,36 @@ describe('TypeResolver', () => {
     expect(lst.elements()).to.deep.equal([0, 1, 2])
   })
 
-  it('should fail on non-sensical type spec', () => {
-    expect(() => resolver.resolve(5)).to.throw(/invalid.*spec/i)
+  it('should fail on invalid factory spec', () => {
+    resolver = resolver.addNativeType('Uint32', uinteger(4))
+      .addFactories(FACTORIES)
+
+    expect(() => resolver.addTypes([{
+      name: 'Foo',
+      factory: {
+        option: 'Uint32'
+      }
+    }])).to.throw(/typeParams.*array/)
+
+    expect(() => resolver.addTypes([{
+      name: 'Foo',
+      factory: {
+        typeParams: [{ type: '*' }],
+        option: 'Uint32'
+      }
+    }])).to.throw(/missing name.*type param/i)
+  })
+
+  it('should fail on duplicate factory spec', () => {
+    resolver = resolver.addFactories(FACTORIES)
+
+    expect(() => resolver.addTypes([{
+      name: 'uinteger',
+      factory: {
+        typeParams: [{ name: 'T' }],
+        array: { typeParam: 'T' }
+      }
+    }])).to.throw(/\buinteger\b.*exists/)
   })
 
   it('should create a type factory from spec', () => {
@@ -350,6 +388,35 @@ describe('TypeResolver', () => {
         tail: { head: 'jkl', tail: null }
       }
     })
+  })
+
+  it('should fail on a bogus factory spec', () => {
+    resolver = resolver.addFactories(FACTORIES).addTypes([{
+      name: 'bogus',
+      factory: {
+        typeParams: [{ name: 'B' }],
+        bogus: { array: { typeParam: 'B' } }
+      }
+    }])
+
+    expect(() => resolver.resolve({ bogus: { buffer: 4 } })).to.throw(/rebind type param/)
+
+    // Interestingly, this recursive def is not bogus:
+    resolver = resolver.addTypes([{
+      name: 'notBogus',
+      factory: {
+        typeParams: [{ name: 'B' }],
+        array: { notBogus: { typeParam: 'B' } }
+      }
+    }])
+
+    const XArray = resolver.resolve({ notBogus: { buffer: 4 } })
+    // It only supports empty arrays though:
+    const arr = XArray.from([[], [], [[], []]])
+    expect(arr.count()).to.equal(3)
+    expect(arr.get(1).count()).to.equal(0)
+    expect(arr.get(2).count()).to.equal(2)
+    expect(arr.get(2).get(0).count()).to.equal(0)
   })
 
   it('should resolve factories using other factories', () => {
