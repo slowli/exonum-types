@@ -133,4 +133,24 @@ describe('array', () => {
       expect(lst).to.satisfy(l => l.every(isExonumObject))
     })
   })
+
+  describe('static equals', () => {
+    it('should assert array equality correctly', () => {
+      expect(StrArray.equals(StrArray)).to.be.true()
+      expect(StrArray.equals(BoolArray)).to.be.false()
+
+      const OtherStrArray = std.resolve({ array: 'Str' })
+      expect(StrArray.equals(OtherStrArray)).to.be.true()
+
+      const OtherStructArray = std.resolve({
+        array: {
+          struct: [
+            { name: 'x', type: 'Uint32' },
+            { name: 'y', type: { uinteger: 4 } }
+          ]
+        }
+      })
+      expect(OtherStructArray.equals(StructArray)).to.be.true()
+    })
+  })
 })

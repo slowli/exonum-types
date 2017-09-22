@@ -8,8 +8,6 @@ import * as segments from './segments'
 const SizeType = uinteger(4)
 
 function array (ElementType, resolver) {
-  ElementType = resolver.resolve(ElementType)
-
   class ExonumArray extends createType({
     name: `Array<${ElementType.inspect()}>`,
     typeLength: undefined
@@ -72,5 +70,9 @@ function array (ElementType, resolver) {
 }
 
 export default initFactory(array, {
-  name: 'array'
+  name: 'array',
+
+  prepare (Type, resolver) {
+    return resolver.resolve(Type)
+  }
 })
