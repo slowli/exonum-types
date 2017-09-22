@@ -3,9 +3,6 @@ import { List, Stack, Map as ImmutableMap } from 'immutable'
 import placeholder, { isPlaceholder } from './placeholder'
 import initFactory from './initFactory'
 import { isExonumFactory, isExonumType, setKind } from './common'
-import { parseUnion } from './union'
-
-const FACTORY_MARKER = 'type'
 
 /**
  * Resolver of datatypes. The resolver is a singleton
@@ -103,10 +100,19 @@ export default class TypeResolver {
   }
 
   _getType (name) {
-    let type = this.types.get(name)
+    const type = this.types.get(name)
     if (type !== undefined) return type
     if (this._pendingTypes) {
       return this._pendingTypes.get(name)
+    }
+    return undefined
+  }
+
+  _getFactory (name) {
+    const factory = this.factories.get(name)
+    if (factory !== undefined) return factory
+    if (this._pendingFactories) {
+      return this._pendingFactories.get(name)
     }
     return undefined
   }
@@ -169,9 +175,10 @@ export default class TypeResolver {
         m.set(name, placeholder(name))
       })
     })
+    this._pendingFactories = ImmutableMap()
 
     let newTypes
-    let newFactories = ImmutableMap()
+    let newFactories
 
     try {
       // Then, create types
@@ -179,8 +186,12 @@ export default class TypeResolver {
         const name = type.name
         // TODO: parse other metadata (e.g., documentation)
 
+        type = Object.assign({}, type)
+        delete type.name
+
         if (type.factory) {
-          newFactories = newFactories.set(name, createFactory(name, type.factory))
+          this._pendingFactories = this._pendingFactories.set(name,
+            createFactory(name, type.factory))
         } else {
           type = createType.call(this, type)
           this._resolvePendingType(name, type)
@@ -190,15 +201,16 @@ export default class TypeResolver {
       newTypes = this.types.mergeWith((oldVal, newVal, key) => {
         throw new Error(`Type ${key} already exists`)
       }, this._pendingTypes)
+
+      newFactories = this.factories.mergeWith((oldVal, newVal, key) => {
+        throw new Error(`Factory ${key} already exists`)
+      }, this._pendingFactories)
     } finally {
       // Cleanup pending types which otherwise lead to unpredicatble effects
       // and occupy unnecessary memory
       delete this._pendingTypes
+      delete this._pendingFactories
     }
-
-    newFactories = this.factories.mergeWith((oldVal, newVal, key) => {
-      throw new Error(`Factory ${key} already exists`)
-    }, newFactories)
 
     return new TypeResolver(newTypes, newFactories)
   }
@@ -278,16 +290,21 @@ function createType (spec) {
     return spec
   } if (typeof spec === 'string') {
     // String specification (e.g., 'Uint32')
-    const type = this.types.get(spec) ||
-      this._pendingTypes.get(spec)
+    const type = this._getType(spec)
     if (!type) {
       throw new Error(`Unknown type name: ${spec}`)
     }
+
     return type
   } else if (typeof spec === 'object') {
-    if ('typeParam' in spec) {
-      // The specification is a reference to a type param
+    const keys = Object.keys(spec)
+    if (keys.length !== 1) {
+      throw new Error('Unexpected type specification; expected an object with exactly 1 key')
+    }
 
+    const key = keys[0]
+    if (key === 'typeParam') {
+      // The specification is a reference to a type param
       const factory = this._factories.peek()
       if (!factory) {
         throw new Error('Type param outside of factory declaration')
@@ -299,18 +316,14 @@ function createType (spec) {
       }
 
       return type
-    }
-
-    // We have a generic type
-    let factory = parseUnion(spec, FACTORY_MARKER, this.factories.keySeq())
-
-    if (factory) {
-      let arg = factory[1]
-      factory = this.factories.get(factory[0])
-      return factory(arg, this)
     } else {
-      // TODO: try to guess the missing type factory
-      throw new Error('Cannot find type factory')
+      // The specification has the form `{ [factoryName]: factoryArg }`
+      const factory = this._getFactory(key)
+      if (!factory) {
+        throw new Error(`Unknown factory: ${key}`)
+      }
+
+      return factory(spec[key], this)
     }
   } else {
     throw new Error('Invalid type specification')
