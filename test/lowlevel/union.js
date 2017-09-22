@@ -1,8 +1,10 @@
 /* eslint-env mocha */
 
+import { List as ImList } from 'immutable'
 import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
+import chaiImmutable from 'chai-immutable'
 
 import struct from '../../src/lowlevel/struct'
 import union from '../../src/lowlevel/union'
@@ -11,6 +13,7 @@ import { isExonumObject } from '../../src/lowlevel/common'
 
 const expect = chai
   .use(chaiBytes)
+  .use(chaiImmutable)
   .use(dirtyChai)
   .expect
 
@@ -297,6 +300,54 @@ describe('union', () => {
         }
       })
       expect(x.toString()).to.equal('union(int(1020304))')
+    })
+  })
+
+  describe('typeTag', () => {
+    it('should be defined', () => {
+      expect(StrOrInt.typeTag).to.be.a('function')
+    })
+
+    it('should be an immutable list', () => {
+      expect(StrOrInt.typeTag()).to.equal(ImList.of('union',
+        ImList.of('str', std.Str, 'int', std.Uint32)))
+    })
+  })
+
+  describe('static hashCode', () => {
+    it('should proxy typeTag hashCode', () => {
+      expect(StrOrInt.hashCode()).to.equal(StrOrInt.typeTag().hashCode())
+    })
+  })
+
+  describe('static equals', () => {
+    it('should structurally determine type equality', () => {
+      expect(StrOrInt.equals(StrOrInt)).to.be.true()
+      expect(StrOrInt.equals(ListRecord)).to.be.false()
+
+      let OtherStrOrInt = std.resolve({
+        union: [
+          { name: 'str', type: 'Str' },
+          { name: 'int', type: 'Uint32' }
+        ]
+      })
+      expect(OtherStrOrInt.equals(StrOrInt)).to.be.true()
+
+      OtherStrOrInt = std.resolve({
+        union: [
+          { name: 'str', type: 'Str' },
+          { name: 'int', type: 'Uint16' }
+        ]
+      })
+      expect(OtherStrOrInt.equals(StrOrInt)).to.be.false()
+
+      OtherStrOrInt = std.resolve({
+        union: [
+          { name: 'str', type: 'Str' },
+          { name: 'int', type: { uinteger: 4 } }
+        ]
+      })
+      expect(OtherStrOrInt.equals(StrOrInt)).to.be.true()
     })
   })
 })

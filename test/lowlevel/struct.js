@@ -1,8 +1,10 @@
 /* eslint-env mocha */
 
 import bigInt from 'big-integer'
+import { List } from 'immutable'
 import chai from 'chai'
 import chaiBytes from 'chai-bytes'
+import chaiImmutable from 'chai-immutable'
 import dirtyChai from 'dirty-chai'
 
 import { isExonumType, isExonumObject } from '../../src/lowlevel/common'
@@ -11,6 +13,7 @@ import std from '../../src/std'
 
 const expect = chai
   .use(chaiBytes)
+  .use(chaiImmutable)
   .use(dirtyChai)
   .expect
 
@@ -386,6 +389,73 @@ describe('struct', () => {
         c: 'f00'
       })
       expect(x.toString()).to.equal('{ a: -10, b: { str: cabbage, foo: 16 }, c: f00 }')
+    })
+  })
+
+  describe('typeTag', () => {
+    it('should be defined', () => {
+      expect(Type.typeTag).to.be.a('function')
+    })
+
+    it('should yield a list', () => {
+      expect(Type.typeTag()).to.equal(List.of('struct',
+        List.of('foo', std.Uint32, 'bar', std.Int64)))
+    })
+  })
+
+  describe('static hashCode', () => {
+    it('should proxy typeTag hashCode', () => {
+      expect(Type.hashCode()).to.equal(Type.typeTag().hashCode())
+    })
+  })
+
+  describe('static equals', () => {
+    it('should structurually determine type equality', () => {
+      expect(Type.equals(Type)).to.be.true()
+      expect(Type.equals(ComplexType)).to.be.false()
+      expect(ComplexType.equals(Type)).to.be.false()
+
+      let OtherType = struct([
+        { name: 'foo', type: std.Uint32 },
+        { name: 'bar', type: std.Int64 }
+      ])
+
+      expect(Type.equals(OtherType)).to.be.true()
+      expect(OtherType.equals(Type)).to.be.true()
+      expect(ComplexType.equals(OtherType)).to.be.false()
+      expect(OtherType.equals(ComplexType)).to.be.false()
+
+      OtherType = std.resolve({
+        struct: [
+          { name: 'foo', type: 'Uint32' },
+          { name: 'bar', type: 'Int64' }
+        ]
+      })
+
+      expect(Type.equals(OtherType)).to.be.true()
+      expect(OtherType.equals(Type)).to.be.true()
+      expect(ComplexType.equals(OtherType)).to.be.false()
+      expect(OtherType.equals(ComplexType)).to.be.false()
+    })
+
+    it('should structurually determine type equality in complex case', () => {
+      const OtherType = std.resolve({
+        struct: [
+          { name: 'a', type: 'Int16' },
+          {
+            name: 'b',
+            type: {
+              struct: [
+                { name: 'str', type: 'Str' },
+                { name: 'foo', type: 'Uint8' }
+              ]
+            }
+          },
+          { name: 'c', type: 'Str' }
+        ]
+      })
+
+      expect(OtherType.equals(ComplexType)).to.be.true()
     })
   })
 })
