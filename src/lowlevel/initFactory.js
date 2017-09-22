@@ -1,6 +1,6 @@
 import { List } from 'immutable'
 
-import { setKind } from './common'
+import { setKind, isExonumType } from './common'
 import { dummyResolver } from './TypeResolver'
 
 const DUMMY_RESOLVER = dummyResolver()
@@ -31,6 +31,7 @@ const DUMMY_RESOLVER = dummyResolver()
  */
 export default function initFactory (factory, {
   name,
+  implementValueObject = true,
   prepare = (arg, resolver) => arg,
   typeTag = (arg) => arg,
   typeName = (arg) => `${name}<?>`
@@ -49,7 +50,34 @@ export default function initFactory (factory, {
       const type = factory(arg, resolver)
       resolver._resolvePendingType(fullTag, type)
 
-      // TODO: hashCode(), equals() for type
+      if (implementValueObject) {
+        Object.defineProperty(type, 'hashCode', {
+          enumerable: false,
+          configurable: true,
+          value: function () {
+            return fullTag.hashCode()
+          }
+        })
+
+        Object.defineProperty(type, 'equals', {
+          enumerable: false,
+          configurable: true,
+          value: function (other) {
+            if (!isExonumType(other)) return false
+            if (typeof other.typeTag !== 'function') return false
+            return fullTag.equals(other.typeTag())
+          }
+        })
+
+        Object.defineProperty(type, 'typeTag', {
+          enumerable: false,
+          configurable: true,
+          value: function () {
+            return fullTag
+          }
+        })
+      }
+
       return type
     }
   }
