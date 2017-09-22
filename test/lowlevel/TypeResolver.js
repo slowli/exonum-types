@@ -576,6 +576,64 @@ describe('TypeResolver', () => {
     const pt = I16Point.from([32, -1])
     expect(pt.serialize()).to.equalBytes('2000' + 'ffff')
   })
+
+  it('should throw on non-existing type parameters', () => {
+    const origResolver = resolver
+
+    const tupleDecl = {
+      name: 'Tuple',
+      factory: {
+        typeParams: [
+          { name: 'U' }, { name: 'V' }
+        ],
+        struct: [
+          { name: 'first', type: { typeParam: 'U' } },
+          { name: 'second', type: { typeParam: 'W' } }
+        ]
+      }
+    }
+
+    resolver = resolver.addFactories(FACTORIES).addTypes([
+      { name: 'Int8', integer: 1 },
+      tupleDecl
+    ])
+    expect(() => resolver.resolve({ Tuple: { U: 'Int8', V: 'Int8' } }))
+      .to.throw(/not bound.*\bW\b/)
+    expect(() => resolver.resolve({ Tuple: { U: 'Int8', W: 'Int8' } }))
+      .to.throw(/missing.*\bV\b/i)
+
+    // Correct the tuple declaration
+    tupleDecl.factory.struct[1].type.typeParam = 'V'
+
+    resolver = origResolver.addFactories(FACTORIES).addTypes([
+      { name: 'Int8', integer: 1 },
+      tupleDecl
+    ])
+    expect(() => resolver.resolve({ Tuple: { U: 'Int8', W: 'Int8' } }))
+      .to.throw(/missing.*\bV\b/i)
+  })
+
+  it('should throw on type params outside of factory declaration', () => {
+    resolver = resolver.addFactories(FACTORIES)
+    const msg = /type param outside of factory declaration/i
+
+    expect(() => resolver.resolve({ typeParam: 'U' })).to.throw(msg)
+    expect(() => resolver.resolve({ option: { typeParam: 'T' } })).to.throw(msg)
+
+    // Check that it still throws after processing the factory
+
+    resolver = resolver.addTypes([{
+      name: 'Foo',
+      factory: {
+        typeParams: [ { name: 'T' } ],
+        array: { option: { typeParam: 'T' } }
+      }
+    }])
+
+    const IntFoo = resolver.resolve({ Foo: integer(1) })
+    expect(IntFoo).to.satisfy(isExonumType)
+    expect(() => resolver.resolve({ typeParam: 'T' })).to.throw(msg)
+  })
 })
 
 describe('dummyResolver', () => {
