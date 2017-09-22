@@ -5,6 +5,7 @@ import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
 import TypeResolver, { dummyResolver, validateAndResolveFields } from '../../src/lowlevel/TypeResolver'
+import initFactory from '../../src/lowlevel/initFactory'
 import Bool from '../../src/lowlevel/Bool'
 import Str from '../../src/lowlevel/Str'
 import array from '../../src/lowlevel/array'
@@ -417,6 +418,18 @@ describe('TypeResolver', () => {
     expect(arr.get(1).count()).to.equal(0)
     expect(arr.get(2).count()).to.equal(2)
     expect(arr.get(2).get(0).count()).to.equal(0)
+  })
+
+  it('should fail on bogus factory', () => {
+    const bogusFactory = initFactory((arg) => array(arg), {
+      name: 'bogus'
+      // Forgot to declare sane `prepare` here
+    })
+
+    resolver = resolver.addNativeType('Str', Str)
+      .addFactory('bogus', bogusFactory)
+
+    expect(() => resolver.resolve({ bogus: 'Str' })).to.throw(/Exonum type expected/)
   })
 
   it('should resolve factories using other factories', () => {
