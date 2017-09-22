@@ -154,13 +154,14 @@ export function memoize (fn) {
  */
 export function createType ({
   name = '[Exonum type]',
+  typeTag = List.of(name),
   typeLength = undefined,
   proxiedMethods = [],
   kind = 'type'
 }) {
   class ExonumType {
     static inspect () {
-      return name
+      return this.toString()
     }
 
     static toString () {
@@ -171,13 +172,17 @@ export function createType ({
       return typeLength
     }
 
+    static typeTag () {
+      return typeTag
+    }
+
     static hashCode () {
-      // Very primitive implementation; possible false positives
-      return List.of(name).hashCode()
+      return this.typeTag().hashCode()
     }
 
     static equals (other) {
-      return other === this
+      if (!isExonumType(other)) return false
+      return this.typeTag().equals(other.typeTag())
     }
 
     static from (maybeInstance) {
