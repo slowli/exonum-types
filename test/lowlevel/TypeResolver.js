@@ -417,6 +417,32 @@ describe('TypeResolver', () => {
       '01' + '01' // marker + y.bool
     )
   })
+
+  it('should support type equality for factories', () => {
+    resolver = resolver.addFactories(FACTORIES).addTypes([{
+      name: 'Uint32',
+      uinteger: 4
+    }, {
+      name: 'list',
+      factory: {
+        typeParams: [{ name: 'T', type: 'type' }],
+        option: {
+          struct: [
+            { name: 'head', type: { typeParam: 'T' } },
+            { name: 'tail', type: { list: { typeParam: 'T' } } }
+          ]
+        }
+      }
+    }])
+
+    const Uint32List = resolver.resolve({ list: 'Uint32' })
+    const OtherList = resolver.resolve({ list: { uinteger: 4 } })
+    const YetAnotherList = resolver.resolve({ list: uinteger(4) })
+
+    expect(Uint32List.equals(Uint32List)).to.be.true()
+    expect(Uint32List.equals(OtherList)).to.be.true()
+    expect(YetAnotherList.equals(OtherList)).to.be.true()
+  })
 })
 
 describe('dummyResolver', () => {
