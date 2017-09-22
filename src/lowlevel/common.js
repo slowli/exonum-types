@@ -1,3 +1,5 @@
+import { List } from 'immutable'
+
 const EXONUM_KIND_PROP = typeof Symbol !== 'undefined'
   ? Symbol.for('exonum.kind')
   : '__exonumKind'
@@ -167,6 +169,15 @@ export function createType ({
 
     static typeLength () {
       return typeLength
+    }
+
+    static hashCode () {
+      // Very primitive implementation; possible false positives
+      return List.of(name).hashCode()
+    }
+
+    static equals (other) {
+      return other === this
     }
 
     static from (maybeInstance) {
