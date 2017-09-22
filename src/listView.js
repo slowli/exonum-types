@@ -26,7 +26,6 @@ const LIST_VIEW_NODE_DEF = {
  * Creates a `ListViewNode<ValType>` for a specific type of values.
  */
 function listViewNode (ValType, resolver) {
-  // XXX: works only with "native" type definitions
   return resolver.addNativeType('T', ValType)
     .addTypes([
       LIST_VIEW_NODE_DEF
@@ -122,7 +121,6 @@ const PROXIED_METHODS = [
 ]
 
 function listView (ValType, resolver) {
-  ValType = resolver.resolve(ValType)
   const Node = listViewNode(ValType, resolver)
 
   class ListView extends createType({
@@ -160,4 +158,10 @@ function listView (ValType, resolver) {
   return ListView
 }
 
-export default initFactory(listView, { name: 'listView' })
+export default initFactory(listView, {
+  name: 'listView',
+
+  prepare (Type, resolver) {
+    return resolver.resolve(Type)
+  }
+})
