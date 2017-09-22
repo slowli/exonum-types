@@ -4,7 +4,6 @@ import bigInt from 'big-integer'
 import { List } from 'immutable'
 import chai from 'chai'
 import chaiBytes from 'chai-bytes'
-import chaiImmutable from 'chai-immutable'
 import dirtyChai from 'dirty-chai'
 
 import { isExonumType, isExonumObject } from '../../src/lowlevel/common'
@@ -13,7 +12,6 @@ import std from '../../src/std'
 
 const expect = chai
   .use(chaiBytes)
-  .use(chaiImmutable)
   .use(dirtyChai)
   .expect
 
@@ -398,8 +396,9 @@ describe('struct', () => {
     })
 
     it('should yield a list', () => {
-      expect(Type.typeTag()).to.equal(List.of('struct',
-        List.of('foo', std.Uint32, 'bar', std.Int64)))
+      const lst = List.of('struct',
+        List.of('foo', std.Uint32, 'bar', std.Int64))
+      expect(lst.equals(Type.typeTag())).to.be.true()
     })
   })
 

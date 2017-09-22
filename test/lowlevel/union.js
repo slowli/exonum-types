@@ -4,7 +4,6 @@ import { List as ImList } from 'immutable'
 import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
-import chaiImmutable from 'chai-immutable'
 
 import struct from '../../src/lowlevel/struct'
 import union from '../../src/lowlevel/union'
@@ -13,7 +12,6 @@ import { isExonumObject } from '../../src/lowlevel/common'
 
 const expect = chai
   .use(chaiBytes)
-  .use(chaiImmutable)
   .use(dirtyChai)
   .expect
 
@@ -309,8 +307,9 @@ describe('union', () => {
     })
 
     it('should be an immutable list', () => {
-      expect(StrOrInt.typeTag()).to.equal(ImList.of('union',
-        ImList.of('str', std.Str, 'int', std.Uint32)))
+      const lst = ImList.of('union',
+        ImList.of('str', std.Str, 'int', std.Uint32))
+      expect(lst.equals(StrOrInt.typeTag())).to.be.true()
     })
   })
 
