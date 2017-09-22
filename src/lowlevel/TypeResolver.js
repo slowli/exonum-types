@@ -173,7 +173,7 @@ export default class TypeResolver {
       .map(type => type.name)
     this._pendingTypes = ImmutableMap().withMutations(m => {
       typeNames.forEach(name => {
-        m.set(name, placeholder(name))
+        m.set(name, placeholder(name, List.of(name)))
       })
     })
     this._pendingFactories = ImmutableMap()
