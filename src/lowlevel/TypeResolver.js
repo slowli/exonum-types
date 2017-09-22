@@ -1,7 +1,8 @@
-import { List, Stack, Map as ImmutableMap } from 'immutable'
+import { List, Map as ImmutableMap } from 'immutable'
 
 import placeholder from './placeholder'
 import initFactory from './initFactory'
+import typeParam from './typeParam'
 import { isExonumFactory, isExonumType, setKind } from './common'
 
 // Initial factories that are present in every instance of `TypeResolver`
@@ -126,44 +127,8 @@ export default class TypeResolver {
   }
 
   _resolvePendingType (name, type) {
-    if (!this._pendingTypes) {
-      // `_resolvePendingType` invoked outside of `addTypes()`
-      return
-    }
-
     this._pendingTypes.get(name).replaceBy(type)
     this._pendingTypes = this._pendingTypes.set(name, type)
-  }
-
-  _bindTypeParams (factoryName, params) {
-    Object.keys(params).forEach(name => {
-      const Type = params[name]
-
-      if (!isExonumType(Type)) {
-        throw new TypeError('`_bindTypeParams` should bind Exonum types')
-      }
-
-      const key = List.of(factoryName, name)
-
-      if (this._typeParams && this._typeParams.has(key)) {
-        throw new Error(`Attempt to rebind type param ${name} in ${factoryName}; old value: ${this._typeParams.get(key)}, new value: ${Type}`)
-      }
-    })
-
-    this._typeParams = (this._typeParams || ImmutableMap()).merge(
-      Object.keys(params).map(name => [List.of(factoryName, name), params[name]])
-    )
-
-    this._factoryStack = (this._factoryStack || Stack()).push(factoryName)
-  }
-
-  _unbindTypeParams (factoryName) {
-    if (this._factoryStack.peek() !== factoryName) {
-      throw new Error(`Attempt to unbind type params for a wrong factory: ${factoryName} when ${this._factoryStack.peek()} was expected`)
-    }
-
-    this._factoryStack = this._factoryStack.pop()
-    this._typeParams = this._typeParams.filterNot((_, key) => key.get(0) === factoryName)
   }
 
   addTypes (types) {
@@ -317,31 +282,6 @@ function createType (spec) {
 }
 
 /**
- * Type parameter factory.
- *
- * @param {string} arg
- *   name of the parameter to look up
- */
-function typeParam (arg, resolver) {
-  if (!resolver._factoryStack) {
-    throw new Error('Type param outside of factory declaration')
-  }
-  const factory = resolver._factoryStack.peek()
-  if (!factory) {
-    throw new Error('Type param outside of factory declaration')
-  }
-
-  const type = resolver._typeParams.get(List.of(factory, arg))
-  if (!type) {
-    throw new Error(`Type param not bound: ${arg} in ${factory}`)
-  }
-
-  return type
-}
-
-setKind(typeParam, 'factory')
-
-/**
  * Validates type parameter specification and resolve them to Exonum types.
  *
  * @param {TypeSpec | {[key: string]: TypeSpec}} params
@@ -384,12 +324,12 @@ function createFactory (factoryName, spec) {
   })
 
   function factory (arg, resolver) {
-    resolver._bindTypeParams(factoryName, arg)
+    typeParam.push(resolver, factoryName, arg)
 
     try {
       return resolver.resolve(description)
     } finally {
-      resolver._unbindTypeParams(factoryName)
+      typeParam.pop(resolver, factoryName)
     }
   }
 
