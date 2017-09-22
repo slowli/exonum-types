@@ -443,6 +443,139 @@ describe('TypeResolver', () => {
     expect(Uint32List.equals(OtherList)).to.be.true()
     expect(YetAnotherList.equals(OtherList)).to.be.true()
   })
+
+  it('should be able to instantiate types from factory on the same iteration', () => {
+    resolver = resolver.addFactories(FACTORIES).addTypes([{
+      name: 'Uint32',
+      uinteger: 4
+    }, {
+      name: 'list',
+      factory: {
+        typeParams: [{ name: 'T', type: 'type' }],
+        option: {
+          struct: [
+            { name: 'head', type: { typeParam: 'T' } },
+            { name: 'tail', type: { list: { typeParam: 'T' } } }
+          ]
+        }
+      }
+    }, {
+      name: 'Uint32List',
+      list: 'Uint32'
+    }, {
+      name: 'StructListArray',
+      array: {
+        list: {
+          struct: [
+            { name: 'x', type: 'Uint32' },
+            { name: 'y', type: 'Uint32' }
+          ]
+        }
+      }
+    }])
+
+    const Uint32List = resolver.resolve('Uint32List')
+    expect(Uint32List).to.satisfy(isExonumType)
+    expect(Uint32List.from([45, [100, null]]).toJSON()).to.deep.equal({
+      head: 45, tail: { head: 100, tail: null }
+    })
+
+    const StructListArray = resolver.resolve('StructListArray')
+    expect(StructListArray).to.satisfy(isExonumType)
+    const la = StructListArray.from([
+      [{ x: 1, y: 2 }, [[3, 4], null]],
+      [[5, 6], [[7, 8], [{ x: 9, y: 10 }, null]]]
+    ])
+
+    expect(la.count()).to.equal(2)
+    expect(la.get(0).some.head.toJSON()).to.deep.equal({ x: 1, y: 2 })
+    expect(la.get(1).some.tail.some.head.toJSON()).to.deep.equal({ x: 7, y: 8 })
+  })
+
+  it('should be able to parse cross-recursive factory defs', () => {
+    resolver = resolver.addFactories(FACTORIES).addTypes([{
+      name: 'Hash',
+      buffer: 8
+    }, {
+      name: 'Node',
+      factory: {
+        typeParams: [{ name: 'T' }],
+        union: [
+          {
+            name: 'branch',
+            type: { Branch: { typeParam: 'T' } }
+          },
+          { name: 'hash', type: 'Hash' },
+          { name: 'val', type: { typeParam: 'T' } }
+        ]
+      }
+    }, {
+      name: 'Branch',
+      factory: {
+        typeParams: [{ name: 'T' }],
+        struct: [
+          { name: 'left', type: { Node: { typeParam: 'T' } } },
+          { name: 'right', type: { Node: { typeParam: 'T' } } }
+        ]
+      }
+    }, {
+      name: 'Int64Node',
+      Node: { integer: 8 }
+    }])
+
+    const StrBranch = resolver.resolve({ Branch: Str })
+    expect(StrBranch).to.satisfy(isExonumType)
+
+    let branch = StrBranch.from({
+      left: { hash: '0001020304050607' },
+      right: { val: 'Hello, world' }
+    })
+    expect(branch.left.type).to.equal('hash')
+    expect(branch.right.val).to.equal('Hello, world')
+    branch = branch.set('right', {
+      type: 'branch',
+      left: { val: '!' },
+      right: { hash: 'ffffffff00000000' }
+    })
+
+    expect(branch.right.type).to.equal('branch')
+    expect(branch.right.branch.left.val).to.equal('!')
+  })
+
+  it('should be able to parse factories with several params', () => {
+    resolver = resolver.addFactories(FACTORIES).addTypes([{
+      name: 'Tuple',
+      factory: {
+        typeParams: [
+          { name: 'U' }, { name: 'V' }
+        ],
+        struct: [
+          { name: 'first', type: { typeParam: 'U' } },
+          { name: 'second', type: { typeParam: 'V' } }
+        ]
+      }
+    }, {
+      name: 'Point',
+      factory: {
+        typeParams: [{ name: 'T' }],
+        Tuple: { U: { typeParam: 'T' }, V: { typeParam: 'T' } }
+      }
+    }])
+
+    const SITuple = resolver.resolve({ Tuple: { U: Str, V: uinteger(1) } })
+    expect(SITuple).to.satisfy(isExonumType)
+    expect(SITuple.inspect()).to.equal('[Str, Uint8]')
+
+    const tuple = SITuple.from([ 'foo', 4 ])
+    expect(tuple.first).to.equal('foo')
+    expect(tuple.second).to.equal(4)
+
+    const I16Point = resolver.resolve({ Point: { integer: 2 } })
+    expect(I16Point).to.satisfy(isExonumType)
+
+    const pt = I16Point.from([32, -1])
+    expect(pt.serialize()).to.equalBytes('2000' + 'ffff')
+  })
 })
 
 describe('dummyResolver', () => {
