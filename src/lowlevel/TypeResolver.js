@@ -4,13 +4,18 @@ import placeholder, { isPlaceholder } from './placeholder'
 import initFactory from './initFactory'
 import { isExonumFactory, isExonumType, setKind } from './common'
 
+// Initial factories that are present in every instance of `TypeResolver`
+const INIT_FACTORIES = {
+  typeParam
+}
+
 /**
  * Resolver of datatypes. The resolver is a singleton
  */
 export default class TypeResolver {
   constructor (types, factories) {
     Object.defineProperty(this, 'types', { value: types || new ImmutableMap() })
-    Object.defineProperty(this, 'factories', { value: factories || new ImmutableMap() })
+    Object.defineProperty(this, 'factories', { value: factories || new ImmutableMap(INIT_FACTORIES) })
   }
 
   addNativeType (name, type) {
@@ -153,15 +158,15 @@ export default class TypeResolver {
       Object.keys(params).map(name => [List.of(factoryName, name), params[name]])
     )
 
-    this._factories = (this._factories || Stack()).push(factoryName)
+    this._factoryStack = (this._factoryStack || Stack()).push(factoryName)
   }
 
   _unbindTypeParams (factoryName) {
-    if (this._factories.peek() !== factoryName) {
-      throw new Error(`Attempt to unbind type params for a wrong factory: ${factoryName} when ${this._factories.peek()} was expected`)
+    if (this._factoryStack.peek() !== factoryName) {
+      throw new Error(`Attempt to unbind type params for a wrong factory: ${factoryName} when ${this._factoryStack.peek()} was expected`)
     }
 
-    this._factories = this._factories.pop()
+    this._factoryStack = this._factoryStack.pop()
     this._typeParams = this._typeParams.filterNot((_, key) => key.get(0) === factoryName)
   }
 
@@ -302,33 +307,43 @@ function createType (spec) {
       throw new Error('Unexpected type specification; expected an object with exactly 1 key')
     }
 
+    // The specification has the form `{ [factoryName]: factoryArg }`
     const key = keys[0]
-    if (key === 'typeParam') {
-      // The specification is a reference to a type param
-      const factory = this._factories.peek()
-      if (!factory) {
-        throw new Error('Type param outside of factory declaration')
-      }
-
-      const type = this._typeParams.get(List.of(factory, spec.typeParam))
-      if (!type) {
-        throw new Error(`Type param not bound: ${spec.typeParam} in ${factory}`)
-      }
-
-      return type
-    } else {
-      // The specification has the form `{ [factoryName]: factoryArg }`
-      const factory = this._getFactory(key)
-      if (!factory) {
-        throw new Error(`Unknown factory: ${key}`)
-      }
-
-      return factory(spec[key], this)
+    const factory = this._getFactory(key)
+    if (!factory) {
+      throw new Error(`Unknown factory: ${key}`)
     }
+
+    return factory(spec[key], this)
   } else {
     throw new Error('Invalid type specification')
   }
 }
+
+/**
+ * Type parameter factory.
+ *
+ * @param {string} arg
+ *   name of the parameter to look up
+ */
+function typeParam (arg, resolver) {
+  if (!resolver._factoryStack) {
+    throw new Error('Type param outside of factory declaration')
+  }
+  const factory = resolver._factoryStack.peek()
+  if (!factory) {
+    throw new Error('Type param outside of factory declaration')
+  }
+
+  const type = resolver._typeParams.get(List.of(factory, arg))
+  if (!type) {
+    throw new Error(`Type param not bound: ${arg} in ${factory}`)
+  }
+
+  return type
+}
+
+setKind(typeParam, 'factory')
 
 /**
  * Validates type parameter specification and resolve them to Exonum types.
