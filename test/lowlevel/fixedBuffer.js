@@ -88,6 +88,10 @@ describe('fixedBuffer', () => {
       expect(() => new LongBuffer(buf)).to.throw(/length/i)
     })
 
+    it('should not accept invalid encoding', () => {
+      expect(() => new ShortBuffer('00010203', 'hax')).to.throw(/cannot parse/i)
+    })
+
     it('should not accept an object with content and encoding with invalid content length', () => {
       expect(() => new ShortBuffer({ hex: 'fedcba9' }))
         .to.throw(TypeError, /string/i)
@@ -134,6 +138,16 @@ describe('fixedBuffer', () => {
     it('should shorten long buffer', () => {
       const buf = new LongBuffer()
       expect(buf.toString()).to.equal('Buffer(00000000...)')
+    })
+
+    it('should return a buffer in specified encoding if it is specified as argument', () => {
+      const buf = new ShortBuffer([1, 2, 254, 4])
+      expect(buf.toString('bin')).to.equal(
+        '00000001' +
+        '00000010' +
+        '11111110' +
+        '00000100'
+      )
     })
   })
 

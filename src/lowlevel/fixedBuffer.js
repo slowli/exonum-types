@@ -74,9 +74,6 @@ function fixedBuffer (length) {
     }
 
     _doSerialize (buffer) {
-      if (buffer.length !== length) {
-        throw new Error(`Unexpected buffer length: ${buffer.length}; ${length} expected`)
-      }
       buffer.set(rawValue(this))
     }
 
