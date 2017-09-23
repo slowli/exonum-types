@@ -34,6 +34,11 @@ describe('Message', () => {
     }
   })
 
+  // XXX: remove when meta for struct fields is implemented
+  TxTransfer.prototype.author = function () {
+    return this.body().from
+  }
+
   const ComplexMessage = createType({
     message: {
       serviceId: 1,
@@ -177,6 +182,29 @@ describe('Message', () => {
       })
     })
 
+    it('should serialize signature', () => {
+      const msg = new TxTransfer({
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
+      }).sign(aliceKey)
+
+      expect(msg.toJSON()).to.deep.equal({
+        networkId: 0,
+        protocolVersion: 0,
+        serviceId: 1,
+        messageId: 128,
+        body: {
+          from: aliceKey.pub().toJSON(), // string
+          to: bobKey.pub().toJSON(),
+          amount: 10000
+        },
+        signature: msg.signature().toJSON()
+      })
+    })
+
     it('should convert complex message to standard form', () => {
       const msg = new ComplexMessage({
         body: {
@@ -215,6 +243,67 @@ describe('Message', () => {
 
         expect(precommit.verify()).to.be.true()
       })
+    })
+
+    it('should not verify an unsigned message', () => {
+      const msg = new TxTransfer({
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
+      })
+
+      expect(msg.verify()).to.be.false()
+    })
+
+    it('should not verify an incorrectly signed message', () => {
+      let msg = new TxTransfer({
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
+      }).sign(aliceKey)
+
+      // Mutate the body of the message to invalidate the signature
+      msg = new TxTransfer({
+        body: msg.body().set('amount', 9999),
+        signature: msg.signature()
+      })
+      expect(msg.verify()).to.be.false()
+    })
+
+    it('should verify previously signed message', () => {
+      const msg = new TxTransfer({
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
+      }).sign(aliceKey)
+
+      expect(msg.verify()).to.be.true()
+    })
+  })
+
+  describe('toString', () => {
+    it('should return descriptive content for the message', () => {
+      const Msg = createType({
+        message: {
+          serviceId: 1,
+          messageId: 0,
+          body: {
+            struct: [
+              { name: 'foo', type: { fixedBuffer: 4 } },
+              { name: 'bar', type: 'Uint8' }
+            ]
+          }
+        }
+      })
+
+      const msg = Msg.from({ body: { foo: '01020304', bar: 254 } })
+      expect(msg.toString()).to.equal('Message:{ foo: Buffer(01020304), bar: 254 }')
     })
   })
 })

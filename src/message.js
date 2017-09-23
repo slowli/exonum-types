@@ -22,11 +22,8 @@ function message ({
     ? struct(BodyType, resolver)
     : resolver.resolve(BodyType)
 
-  let authorFields = [] // XXX: revert BodyType.filter(field => field.author === true)
-  if (authorFields.length > 1) {
-    throw new Error('Multiple author fields in message body')
-  }
-  const authorField = authorFields[0]
+  // XXX: revert when meta for struct fields is implemented
+  const authorField = undefined
 
   class MessageType extends createType({
     name: `Message<${BodyType.inspect()}>`,
