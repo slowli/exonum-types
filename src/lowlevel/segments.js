@@ -74,9 +74,9 @@ export function serialize (buffer, values, heapPos) {
   }
 
   if (heapPos < buffer.length) {
-    throw new Error(`Invariant broken: Under-allocation of heap, ${buffer.length} bytes allocated vs ${heapPos} used`)
-  } else if (heapPos > buffer.length) {
     throw new Error(`Invariant broken: Over-allocation of heap, ${buffer.length} bytes allocated vs ${heapPos} used`)
+  } else if (heapPos > buffer.length) {
+    throw new Error(`Invariant broken: Under-allocation of heap, ${buffer.length} bytes allocated vs ${heapPos} used`)
   }
 
   return buffer
