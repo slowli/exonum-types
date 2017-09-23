@@ -1,5 +1,4 @@
 import std from './std'
-import { encode } from './lowlevel/bufferEncodings'
 
 const BIT_LENGTH = 256
 
@@ -84,13 +83,13 @@ export default class Bits256 extends Bits256Base {
   }
 
   toJSON () {
-    return trimZeros(encode(this.bytes, 'bin'), this.bitLength())
+    return trimZeros(this.getOriginal('bytes').toString('bin'), this.bitLength())
   }
 
   toString () {
     const bits = (this.bitLength() > 8)
-      ? trimZeros(encode(this.bytes, 'bin'), 8) + '...'
-      : trimZeros(encode(this.bytes, 'bin'), this.bitLength())
+      ? trimZeros(this.getOriginal('bytes').toString('bin'), 8) + '...'
+      : trimZeros(this.getOriginal('bytes').toString('bin'), this.bitLength())
     return `bits(${bits})`
   }
 }
