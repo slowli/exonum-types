@@ -46,25 +46,19 @@ const ENCODINGS = {
  * @returns {boolean} is `str` valid for the buffer?
  */
 export function validateString (str, expectedLength, encoding) {
-  if (!ENCODINGS[encoding]) {
-    throw new TypeError(`Unknown encoding: ${encoding}`)
-  }
-
+  if (!ENCODINGS[encoding]) return false
   return ENCODINGS[encoding].validate(str, expectedLength)
 }
 
 /**
- * Decodes the string to a byte buffer.
+ * Decodes the string to a byte buffer. This method does not verify its parameters;
+ * it is assumed that they were previously validated with `validateString`.
  *
  * @param {number} length buffer length
  * @param {'bin' | 'hex'} encoding
  * @returns {Uint8Array} created buffer
  */
 export function decode (str, length, encoding) {
-  if (!ENCODINGS[encoding]) {
-    throw new TypeError(`Unknown encoding: ${encoding}`)
-  }
-
   const buffer = new Uint8Array(length)
   ENCODINGS[encoding].decode(str, buffer)
   return buffer
@@ -78,10 +72,6 @@ export function decode (str, length, encoding) {
  * @returns {string}
  */
 export function encode (buffer, encoding) {
-  if (!ENCODINGS[encoding]) {
-    throw new TypeError(`Unknown encoding: ${encoding}`)
-  }
-
   return ENCODINGS[encoding].encode(buffer)
 }
 
