@@ -277,12 +277,10 @@ export function dummyResolver () {
     types: ImmutableMap(),
     pendingTypes: ImmutableMap(),
 
-    resolve (type, callback) {
+    resolve (type) {
       if (!isExonumType(type)) {
         throw new Error('Invalid type specified; Exonum type expected')
       }
-
-      if (callback) callback(type)
       return type
     },
 

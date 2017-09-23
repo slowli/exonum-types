@@ -69,18 +69,33 @@ describe('TypeResolver', () => {
     expect(() => resolver.addFactories({ enum: uinteger })).to.throw(/enum.*exists/i)
   })
 
+  it('should fail on definition with undefined name', () => {
+    resolver = resolver.addFactories(FACTORIES)
+    expect(() => resolver.add({ uinteger: 2 })).to.throw(/name not specified/i)
+    expect(() => resolver.add({
+      factory: {
+        typeParams: [{ name: 'T' }],
+        array: { typeParam: 'T' }
+      }
+    })).to.throw(/name not specified/i)
+  })
+
   it('should fail on unknown type name', () => {
+    expect(() => resolver.addFactory('array', array)
+      .resolve({ array: 'Foo' })).to.throw(/Unknown.*\bFoo\b/i)
+
     expect(() => resolver.addFactory('struct', struct)
       .add({
         name: 'Struct',
         struct: [
           { name: 'foo', type: 'Bar' }
         ]
-      })).to.throw(/Unknown.*Bar/i)
+      })).to.throw(/Unknown.*\bBar\b/i)
   })
 
   it('should fail on unknown factory', () => {
     // The `uinteger` factory is not enabled here
+    expect(() => resolver.resolve({ uinteger: 1 })).to.throw(/factory.*\buinteger\b/i)
     expect(() => resolver.add({ name: 'Uint8', uinteger: 1 })).to.throw(/factory.*\buinteger\b/i)
   })
 
