@@ -2,7 +2,9 @@ import bigInt from 'big-integer'
 import { isExonumObject, createType, getMethodNames, rawValue } from './common'
 import initFactory from './initFactory'
 
+// istanbul ignore next: fallback code; hardly possible to trigger in modern envs
 const MAX_SAFE_INTEGER = bigInt(Number.MAX_SAFE_INTEGER || '9007199254740991')
+// istanbul ignore next: fallback code; hardly possible to trigger in modern envs
 const MIN_SAFE_INTEGER = bigInt(Number.MIN_SAFE_INTEGER || '-9007199254740991')
 
 /**
