@@ -369,6 +369,13 @@ describe('struct', () => {
       expect(x.toString()).to.equal('{ foo: 5, bar: -1000 }')
     })
 
+    it('should represent undefined fields with `?`', () => {
+      let x = new Type({ foo: 5 })
+      expect(x.toString()).to.equal('{ foo: 5, ?bar }')
+      x = new Type({ bar: -5 })
+      expect(x.toString()).to.equal('{ ?foo, bar: -5 }')
+    })
+
     it('should yield expected result for complex struct', () => {
       const x = new ComplexType({
         a: -10,

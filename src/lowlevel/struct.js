@@ -93,7 +93,7 @@ function struct (spec, resolver) {
       const props = []
       for (let i = 0; i < spec.length; i++) {
         const value = this.getOriginal(spec[i].name)
-        props.push(`${spec[i].name}: ${value || '?'}`)
+        props.push((value === undefined) ? `?${spec[i].name}` : `${spec[i].name}: ${value}`)
       }
       return `{ ${props.join(', ')} }`
     }

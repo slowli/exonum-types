@@ -68,8 +68,8 @@ describe('str', function () {
     })
 
     it('should serialize non-ASCII strings', function () {
-      const s = new Str('👌хД')
-      expect(s.serialize()).to.equalBytes([0xf0, 0x9f, 0x91, 0x8c, 0xd1, 0x85, 0xd0, 0x94])
+      const s = new Str('👌хД光')
+      expect(s.serialize()).to.equalBytes([0xf0, 0x9f, 0x91, 0x8c, 0xd1, 0x85, 0xd0, 0x94, 0xe5, 0x85, 0x89])
     })
   })
 

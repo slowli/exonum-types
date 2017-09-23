@@ -35,6 +35,14 @@ describe('union', () => {
     { name: 'bool', type: std.Bool }
   ])
 
+  const UnionWithMarker = union({
+    marker: 'kind',
+    variants: [
+      { name: 'int', type: std.Int32 },
+      { name: 'bool', type: std.Bool }
+    ]
+  })
+
   describe('constructor', () => {
     it('should parse spec', () => {
       expect(StrOrInt).to.be.a('function')
@@ -68,12 +76,22 @@ describe('union', () => {
       expect(x.some.toJSON()).to.deep.equal({ head: 15, tail: 'not actually a tail' })
     })
 
+    it('should instantiate from an object with custom marker', () => {
+      const x = UnionWithMarker.from({ kind: 'int', hex: 'ff' })
+      expect(x.int).to.equal(255)
+    })
+
     it('should throw if an object does not contain allowed variant tags', () => {
       expect(() => new StrOrInt({ bool: false })).to.throw(TypeError, /invalid/i)
     })
 
     it('should throw if a marker declaration does not have allowed variant tag', () => {
       expect(() => new StrOrInt({ type: 'bool', dec: '1' })).to.throw(TypeError, /invalid/i)
+    })
+
+    it('should throw if the custom marker is not specified', () => {
+      // The marker is `kind`, but we have supplied default `type`
+      expect(() => UnionWithMarker.from({ type: 'int', hex: 'ffffffff' })).to.throw(/invalid.*init/i)
     })
   })
 
@@ -193,10 +211,15 @@ describe('union', () => {
       expect(+x.getOriginal('int')).to.equal(123)
     })
 
-    it('should return raw value for strings', () => {
+    it('should return original value for strings', () => {
       const x = StrOrInt.str('123')
       expect(x.getOriginal('str')).to.satisfy(isExonumObject)
       expect(x.getOriginal('str').toString()).to.equal('123')
+    })
+
+    it('should return undefined for other variants', () => {
+      const x = StrOrInt.str('123')
+      expect(x.getOriginal('int')).to.be.undefined()
     })
   })
 
