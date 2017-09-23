@@ -27,9 +27,8 @@ const LIST_VIEW_NODE_DEF = {
  */
 function listViewNode (ValType, resolver) {
   return resolver.addNativeType('T', ValType)
-    .addTypes([
-      LIST_VIEW_NODE_DEF
-    ]).resolve('ListViewNode')
+    .add(LIST_VIEW_NODE_DEF)
+    .resolve('ListViewNode')
 }
 
 function parseTreeStructure (tree) {

@@ -58,7 +58,7 @@ const MAP_VIEW_NODE_DEF = [
 function mapViewRoot (ValType, resolver) {
   // XXX: works only with "native" type definitions
   return std.resolver.addNativeTypes({ Bits256, T: ValType })
-    .addTypes(MAP_VIEW_NODE_DEF)
+    .add(MAP_VIEW_NODE_DEF)
     .resolve('MapViewRoot')
 }
 

@@ -5,7 +5,7 @@ import blockchainDefs from './blockchain.json'
 
 const resolver = std.resolver
   .addFactories({ message })
-  .addTypes(blockchainDefs)
+  .add(blockchainDefs)
 
 const types = resolver.namedTypes().toObject()
 types.resolver = resolver

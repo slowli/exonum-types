@@ -54,9 +54,7 @@ describe('TypeResolver', () => {
   it('should fail on adding type with existing name', () => {
     resolver = resolver.addNativeType('Foo', uinteger(3))
       .addFactories({ uinteger })
-    expect(() => resolver.addTypes([
-      { name: 'Foo', uinteger: 2 }
-    ])).to.throw(/Foo.*exists/)
+    expect(() => resolver.add({ name: 'Foo', uinteger: 2 })).to.throw(/Foo.*exists/)
   })
 
   it('should fail on inadmissible factory', () => {
@@ -73,25 +71,23 @@ describe('TypeResolver', () => {
 
   it('should fail on unknown type name', () => {
     expect(() => resolver.addFactory('struct', struct)
-      .addTypes([{
+      .add({
         name: 'Struct',
         struct: [
           { name: 'foo', type: 'Bar' }
         ]
-      }])).to.throw(/Unknown.*Bar/i)
+      })).to.throw(/Unknown.*Bar/i)
   })
 
   it('should fail on unknown factory', () => {
     // The `uinteger` factory is not enabled here
-    expect(() => resolver.addTypes([
-      { name: 'Uint8', uinteger: 1 }
-    ])).to.throw(/factory.*\buinteger\b/i)
+    expect(() => resolver.add({ name: 'Uint8', uinteger: 1 })).to.throw(/factory.*\buinteger\b/i)
   })
 
   it('should fail on invalid type spec', () => {
-    expect(() => resolver.addFactories(FACTORIES).addTypes([
-      { name: 'Uint8', uinteger: 1, foo: 'bar' }
-    ])).to.throw(/expected an object with.*1 key/)
+    expect(() => resolver.addFactories(FACTORIES).add({
+      name: 'Uint8', uinteger: 1, foo: 'bar'
+    })).to.throw(/expected an object with.*1 key/)
   })
 
   it('should fail on non-sensical type spec', () => {
@@ -100,9 +96,7 @@ describe('TypeResolver', () => {
 
   it('should create integer type', () => {
     resolver = resolver.addFactories({ integer, uinteger })
-      .addTypes([
-        { name: 'Uint8', uinteger: 1 }
-      ])
+      .add({ name: 'Uint8', uinteger: 1 })
 
     const Uint8 = resolver.resolve('Uint8')
 
@@ -114,7 +108,7 @@ describe('TypeResolver', () => {
 
   it('should create multiple integer types', () => {
     resolver = resolver.addFactories({ integer, uinteger })
-      .addTypes([
+      .add([
         { name: 'Uint8', uinteger: 1 },
         { name: 'Int64', integer: 8 }
       ])
@@ -130,7 +124,7 @@ describe('TypeResolver', () => {
 
   it('should memoize integer types', () => {
     resolver = resolver.addFactories({ integer, uinteger })
-      .addTypes([
+      .add([
         { name: 'Uint8', uinteger: 1 },
         { name: 'Int64', integer: 8 },
         { name: 'Foo', uinteger: 1 }
@@ -141,20 +135,18 @@ describe('TypeResolver', () => {
 
   it('should memoize integer types when added iteratively', () => {
     resolver = resolver.addFactories({ integer, uinteger })
-      .addTypes([
+      .add([
         { name: 'Uint8', uinteger: 1 },
         { name: 'Int64', integer: 8 }
       ])
-      .addTypes([
-        { name: 'Foo', uinteger: 1 }
-      ])
+      .add({ name: 'Foo', uinteger: 1 })
 
     expect(resolver.resolve('Foo')).to.equal(resolver.resolve('Uint8'))
   })
 
   it('should memoize fixedBuffer types', () => {
     resolver = resolver.addFactories({ fixedBuffer })
-      .addTypes([
+      .add([
         { name: 'PublicKey', fixedBuffer: 32 },
         { name: 'Hash', fixedBuffer: 32 }
       ])
@@ -164,7 +156,7 @@ describe('TypeResolver', () => {
 
   it('should compute known named types', () => {
     resolver = resolver.addFactories({ integer, uinteger })
-      .addTypes([
+      .add([
         { name: 'Uint8', uinteger: 1 },
         { name: 'Int64', integer: 8 }
       ])
@@ -177,9 +169,7 @@ describe('TypeResolver', () => {
 
   it('should not return anonymous types as known', () => {
     resolver = resolver.addFactories({ array, uinteger })
-      .addTypes([
-        { name: 'EUint32Array', array: { uinteger: 4 } }
-      ])
+      .add({ name: 'EUint32Array', array: { uinteger: 4 } })
 
     // This creates 2 anonymous types, `uinteger<4>` and `array<uinteger<4>>`
 
@@ -202,13 +192,13 @@ describe('TypeResolver', () => {
 
   it('should create a struct type', () => {
     resolver = resolver.addFactories({ struct, uinteger })
-      .addTypes([{
+      .add({
         name: 'Timespec',
         struct: [
           { name: 'seconds', type: { uinteger: 8 } },
           { name: 'nanos', type: { uinteger: 4 } }
         ]
-      }])
+      })
 
     const Timespec = resolver.resolve('Timespec')
 
@@ -226,7 +216,7 @@ describe('TypeResolver', () => {
         PublicKey: fixedBuffer(32),
         Uint64: uinteger(8),
         Hash: fixedBuffer(32)
-      }).addTypes([{
+      }).add({
         name: 'Wallet',
         struct: [
           { name: 'pubkey', type: 'PublicKey' },
@@ -234,7 +224,7 @@ describe('TypeResolver', () => {
           { name: 'balance', type: 'Uint64' },
           { name: 'history_hash', type: 'Hash' }
         ]
-      }])
+      })
 
     const Wallet = resolver.resolve('Wallet')
 
@@ -256,7 +246,7 @@ describe('TypeResolver', () => {
   it('should parse recursive type spec', function () {
     resolver = resolver.addFactories(FACTORIES)
       .addNativeType('Uint32', uinteger(4))
-      .addTypes([{
+      .add({
         name: 'List',
         option: {
           struct: [
@@ -264,7 +254,7 @@ describe('TypeResolver', () => {
             { name: 'tail', type: 'List' }
           ]
         }
-      }])
+      })
 
     const List = resolver.resolve('List')
 
@@ -286,39 +276,39 @@ describe('TypeResolver', () => {
     resolver = resolver.addNativeType('Uint32', uinteger(4))
       .addFactories(FACTORIES)
 
-    expect(() => resolver.addTypes([{
+    expect(() => resolver.add({
       name: 'Foo',
       factory: {
         option: 'Uint32'
       }
-    }])).to.throw(/typeParams.*array/)
+    })).to.throw(/typeParams.*array/)
 
-    expect(() => resolver.addTypes([{
+    expect(() => resolver.add({
       name: 'Foo',
       factory: {
         typeParams: [{ type: '*' }],
         option: 'Uint32'
       }
-    }])).to.throw(/missing name.*type param/i)
+    })).to.throw(/missing name.*type param/i)
   })
 
   it('should fail on duplicate factory spec', () => {
     resolver = resolver.addFactories(FACTORIES)
 
-    expect(() => resolver.addTypes([{
+    expect(() => resolver.add({
       name: 'uinteger',
       factory: {
         typeParams: [{ name: 'T' }],
         array: { typeParam: 'T' }
       }
-    }])).to.throw(/\buinteger\b.*exists/)
+    })).to.throw(/\buinteger\b.*exists/)
   })
 
   it('should create a type factory from spec', () => {
     resolver = resolver.addNativeType('Uint32', uinteger(4))
       .addFactories(FACTORIES)
 
-    resolver = resolver.addTypes([{
+    resolver = resolver.add({
       name: 'list',
       factory: {
         typeParams: [{ name: 'T', type: 'type' }],
@@ -329,7 +319,7 @@ describe('TypeResolver', () => {
           ]
         }
       }
-    }])
+    })
 
     expect(resolver.factories.has('list')).to.be.true()
 
@@ -392,24 +382,24 @@ describe('TypeResolver', () => {
   })
 
   it('should fail on a bogus factory spec', () => {
-    resolver = resolver.addFactories(FACTORIES).addTypes([{
+    resolver = resolver.addFactories(FACTORIES).add({
       name: 'bogus',
       factory: {
         typeParams: [{ name: 'B' }],
         bogus: { array: { typeParam: 'B' } }
       }
-    }])
+    })
 
     expect(() => resolver.resolve({ bogus: { buffer: 4 } })).to.throw(/rebind type param/)
 
     // Interestingly, this recursive def is not bogus:
-    resolver = resolver.addTypes([{
+    resolver = resolver.add({
       name: 'notBogus',
       factory: {
         typeParams: [{ name: 'B' }],
         array: { notBogus: { typeParam: 'B' } }
       }
-    }])
+    })
 
     const XArray = resolver.resolve({ notBogus: { buffer: 4 } })
     // It only supports empty arrays though:
@@ -437,7 +427,7 @@ describe('TypeResolver', () => {
       Uint32: uinteger(4)
     }).addFactories(FACTORIES)
 
-    resolver = resolver.addTypes([{
+    resolver = resolver.add([{
       name: 'point',
       factory: {
         typeParams: [{ name: 'T', type: 'type' }],
@@ -499,7 +489,7 @@ describe('TypeResolver', () => {
   })
 
   it('should support type equality for factories', () => {
-    resolver = resolver.addFactories(FACTORIES).addTypes([{
+    resolver = resolver.addFactories(FACTORIES).add([{
       name: 'Uint32',
       uinteger: 4
     }, {
@@ -525,7 +515,7 @@ describe('TypeResolver', () => {
   })
 
   it('should be able to instantiate types from factory on the same iteration', () => {
-    resolver = resolver.addFactories(FACTORIES).addTypes([{
+    resolver = resolver.addFactories(FACTORIES).add([{
       name: 'Uint32',
       uinteger: 4
     }, {
@@ -573,7 +563,7 @@ describe('TypeResolver', () => {
   })
 
   it('should be able to parse cross-recursive factory defs', () => {
-    resolver = resolver.addFactories(FACTORIES).addTypes([{
+    resolver = resolver.addFactories(FACTORIES).add([{
       name: 'Hash',
       buffer: 8
     }, {
@@ -623,7 +613,7 @@ describe('TypeResolver', () => {
   })
 
   it('should be able to parse factories with several params', () => {
-    resolver = resolver.addFactories(FACTORIES).addTypes([{
+    resolver = resolver.addFactories(FACTORIES).add([{
       name: 'Tuple',
       factory: {
         typeParams: [
@@ -673,7 +663,7 @@ describe('TypeResolver', () => {
       }
     }
 
-    resolver = resolver.addFactories(FACTORIES).addTypes([
+    resolver = resolver.addFactories(FACTORIES).add([
       { name: 'Int8', integer: 1 },
       tupleDecl
     ])
@@ -685,7 +675,7 @@ describe('TypeResolver', () => {
     // Correct the tuple declaration
     tupleDecl.factory.struct[1].type.typeParam = 'V'
 
-    resolver = origResolver.addFactories(FACTORIES).addTypes([
+    resolver = origResolver.addFactories(FACTORIES).add([
       { name: 'Int8', integer: 1 },
       tupleDecl
     ])
@@ -702,13 +692,13 @@ describe('TypeResolver', () => {
 
     // Check that it still throws after processing the factory
 
-    resolver = resolver.addTypes([{
+    resolver = resolver.add({
       name: 'Foo',
       factory: {
         typeParams: [ { name: 'T' } ],
         array: { option: { typeParam: 'T' } }
       }
-    }])
+    })
 
     const IntFoo = resolver.resolve({ Foo: integer(1) })
     expect(IntFoo).to.satisfy(isExonumType)

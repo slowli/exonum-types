@@ -25,7 +25,7 @@ export const resolver = new TypeResolver()
     union,
     enum: union
   })
-  .addTypes(rawDefinitions)
+  .add(rawDefinitions)
 
 const types = resolver.namedTypes().toObject()
 types.resolver = resolver
