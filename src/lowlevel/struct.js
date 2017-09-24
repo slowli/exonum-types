@@ -6,7 +6,32 @@ import { validateAndResolveFields } from './TypeResolver'
 import * as segments from './segments'
 
 /**
- * Creates a new structure type based on the specification of its fields.
+ * `Struct<StructSpec>` creates a type with a fixed number of named, possibly
+ * heterogeneous fields. These types correspond to Rust's `struct`s and
+ * `Record`s in Immutable.js.
+ *
+ * `StructSpec` is an array of field specifications. Each field spec needs to
+ * contain at minimum the string name of the field and its type, which is resolved
+ * against the current resolver.
+ *
+ * JSON presentation: object with keys corresponding to named fields.
+ *
+ * Binary serialization: consists of 2 parts:
+ *
+ * - Fixed-sized part, containing segment pointers (in case of var-length fields)
+ *   and fields themselves (in case of fixed-length fields)
+ * - "Heap" containing var-length fields themselves
+ *
+ * @example
+ *   const Point = std.struct([
+ *     { name: 'x', type: 'Int32' }, // type resolved automatically
+ *     { name: 'y', type: std.Int32 }
+ *   ])
+ *   const pt = Point.from({ x: 1, y: -1 })
+ *   const otherPt = Point.from([5, 4]) // initializer accepts array of values
+ *                                      // in the order of field declaration
+ *   console.log(pt.x) // 1, the fields are coerced to primitives automatically
+ *   console.log(otherPt.set('x', 2)) // { x: 5, y: 2 }, `Point` instance
  */
 function struct (spec, resolver) {
   spec = validateAndResolveFields(spec, resolver)
@@ -32,6 +57,14 @@ function struct (spec, resolver) {
       super(Rec(parseInitializer(spec, args, Rec)), null)
     }
 
+    /**
+     * Returns a struct copied from this one, with one of field set to the specified value.
+     * The value does not necessarily have to have the exact type of the field,
+     * but the type needs to know how to convert the value (via the constructor).
+     *
+     * @param {string} name
+     * @param {any} value
+     */
     set (name, value) {
       const idx = propertyNames.indexOf(name)
 
@@ -49,9 +82,9 @@ function struct (spec, resolver) {
     }
 
     /**
-     * Retrieves a field by its name, converted to the "raw" format.
-     * Integers, strings and other objects are converted to the
-     * corresponding native JS entities, while `struct`s, `union`s and other
+     * Retrieves a field by its name, optionally converted to a primitive value.
+     * For example, integers, strings and other objects are converted to the
+     * corresponding native JS entities. `struct`s, `union`s and other
      * constructed types are preserved.
      *
      * @param {string} name
