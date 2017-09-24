@@ -23,23 +23,35 @@ export function parseUnion (obj, marker, variantNames) {
   return variantName ? [variantName, variant] : undefined
 }
 
-/** TODO: implement a simple matcher a la
-
-@example
-  const MaybePoint = union([
-    { name: 'none', type: 'None' },
-    { name: 'some', type: 'Point' }
-  ])
-  const x = new MaybePoint({ some: [4, 5] })
-  x.match(
-    'some', ({x, y}) => console.log(`Point: (${x}, ${y})`,
-    'none', () => console.log('I got nothing')
-  )
-*/
-
 /**
- * Union type factory. Tagged union (aka enum, aka type sum) is a type,
+ * Tagged union (aka enum, aka type sum) is a type,
  * instances of which belong to one of the defined variants.
+ *
+ * Tagged unions are specified by an array of variant specs. A variant spec
+ * is similar to field spec in `struct`s; it contains the name of the variant
+ * and its type.
+ *
+ * JSON presentation: an object with a single key, the active variant name, mapped
+ * to the JSON presentation of the variant.
+ *
+ * Binary serialization: `Uint8` index of the variant (0-based, taken from the order
+ * of the variants in the spec), followed by the serialization of the variant.
+ *
+ * Note: all unions are considered var-length types, even if all variants have the same
+ * type length. This is to assist in forward compatibility: a new variant may appear
+ * with a different type length.
+ *
+ * @example
+ *   const StrOrInt = std.union([
+ *     { name: 'str', type: 'Str' },
+ *     { name: 'int', type: 'Uint32' }
+ *   ])
+ *   let x = StrOrInt.from({ str: 'Hello, world' })
+ *   x = StrOrInt.int(5) // Shortcuts are available to initialize variants
+ *   console.log(x.type) // 'int'
+ *   console.log(x.int) // 5, primitive JS value
+ *   console.log(x.str) // undefined
+ *   console.log(x.toJSON()) // { int: 5 }
  */
 function union (spec, resolver) {
   let marker, variants
