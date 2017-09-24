@@ -35,47 +35,38 @@ function listViewNode (ValType, resolver) {
 
 function parseTreeStructure (tree) {
   const nodes = []
-  const leaves = []
 
-  /**
-   * Recursively walks the tree from root to leaves.
-   *
-   * @param {number} level 0-based tree level, counting from the root
-   * @param {number} pos 0-based position of the current node on the current level
-   */
-  function walkTree (node, level = 0, pos = 0) {
+  function pushNode (node, level, pos) {
     node.level = level
     node.pos = pos
     nodes.push(node)
-
-    switch (node.type) {
-      case 'val':
-      case 'hash':
-        leaves.push(node)
-        break
-      case 'branch':
-        const { left, right } = node.branch
-
-        walkTree(left, level + 1, 2 * pos)
-        walkTree(right, level + 1, 2 * pos + 1)
-        break
-      case 'stub':
-        walkTree(node.stub, level + 1, 2 * pos)
-        break
-    }
   }
 
-  walkTree(tree)
+  nodes.push(tree)
+  tree.level = 0
+  tree.pos = 0
 
-  const levels = leaves.map(node => node.level)
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]
+
+    node.match({
+      branch: ({left, right}) => {
+        pushNode(left, node.level + 1, 2 * node.pos)
+        pushNode(right, node.level + 1, 2 * node.pos + 1)
+      },
+      stub: (stub) => {
+        pushNode(stub, node.level + 1, 2 * node.pos)
+      }
+    })
+  }
+
+  const levels = nodes.map(node => node.level)
   const depth = Math.max.apply(null, levels)
-  const values = leaves.filter(node => node.type === 'val')
+  const values = nodes.filter(node => node.type === 'val')
 
   // All values must be on the same level
   // All hashes must not exceed this level
-  if (
-    !values.every(node => node.level === depth)
-  ) {
+  if (!values.every(node => node.level === depth)) {
     throw new Error('Invalid value / hash height')
   }
 
@@ -87,7 +78,7 @@ function parseTreeStructure (tree) {
     throw new TypeError('Stub node being the left child of parent')
   }
 
-  return { depth, nodes, leaves, values }
+  return { depth, nodes, values }
 }
 
 /**
@@ -97,16 +88,12 @@ function parseTreeStructure (tree) {
  * @returns {Hash}
  */
 function treeHash (node) {
-  switch (node.type) {
-    case 'hash':
-      return node.hash
-    case 'val':
-      return hash(node.val)
-    case 'branch':
-      return hash(treeHash(node.branch.left), treeHash(node.branch.right))
-    case 'stub':
-      return hash(treeHash(node.stub))
-  }
+  return node.match({
+    hash: (h) => h,
+    val: (val) => hash(val),
+    branch: ({left, right}) => hash(treeHash(left), treeHash(right)),
+    stub: (stub) => hash(treeHash(stub))
+  })
 }
 
 // Methods proxied from `OrderedMap` to `ListView`
