@@ -102,6 +102,41 @@ function union (spec, resolver) {
       return rawValue(this).value
     }
 
+    /**
+     * Matches this union against a *matcher* object. The object should have
+     * function properties named according to variants; the one corresponding
+     * to the actual variant will be invoked. Alternatively, if there is no
+     * function matching this object's variant, but there is a *sink* method `_`,
+     * it will be invoked instead. In both cases, the invoked method is supplied
+     * with the active variant.
+     *
+     * @param {Object} matcher
+     *
+     * @example
+     *   const MaybePoint = std.union([
+     *     { name: 'none', type: 'None' },
+     *     { name: 'some', type: Point } // Point is a struct with fields `x` and `y`
+     *   ])
+     *   const x = new MaybePoint({ some: [4, 5] })
+     *   x.match({
+     *     some: ({x, y}) => console.log(`Point: (${x}, ${y})`,
+     *     none: () => console.log('I got nothing')
+     *   })
+     */
+    match (matcher) {
+      return matchAndGet(this, matcher, 'get')
+    }
+
+    /**
+     * Same as `match`, but the invoked method is supplied with Exonum-typed object,
+     * without coercion to a "primitive" value.
+     *
+     * @param {Object} matcher
+     */
+    matchOriginal (matcher) {
+      return matchAndGet(this, matcher, 'getOriginal')
+    }
+
     _doSerialize (buffer) {
       buffer[0] = variantNames.indexOf(getVariant(this))
       getValue(this).serialize(buffer.subarray(1))
@@ -122,6 +157,21 @@ function union (spec, resolver) {
 
   function getValue (union) {
     return rawValue(union).value
+  }
+
+  function matchAndGet (union, matcher, getter) {
+    if (!matcher || typeof matcher !== 'object') {
+      throw new TypeError('Matcher should be an object')
+    }
+
+    const variant = getVariant(union)
+    if (typeof matcher[variant] === 'function') {
+      return matcher[variant](union[getter](variant))
+    } else if (typeof matcher._ === 'function') {
+      return matcher._(union[getter](variant))
+    } else {
+      // throw?
+    }
   }
 
   variantNames.forEach(name => {
