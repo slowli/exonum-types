@@ -4,33 +4,6 @@ import { memoize, rawValue, createType } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
 
-const LIST_VIEW_NODE_DEF = {
-  name: 'ListViewNode',
-  union: [
-    {
-      name: 'branch',
-      type: {
-        struct: [
-          { name: 'left', type: 'ListViewNode' },
-          { name: 'right', type: 'ListViewNode' }
-        ]
-      }
-    },
-    { name: 'stub', type: 'ListViewNode' },
-    { name: 'hash', type: 'Hash' },
-    { name: 'val', type: 'T' }
-  ]
-}
-
-/**
- * Creates a `ListViewNode<ValType>` for a specific type of values.
- */
-function listViewNode (ValType, resolver) {
-  return resolver.addNativeType('T', ValType)
-    .add(LIST_VIEW_NODE_DEF)
-    .resolve('ListViewNode')
-}
-
 function parseTreeStructure (tree) {
   const nodes = []
 
@@ -107,13 +80,13 @@ const PROXIED_METHODS = [
 ]
 
 function listView (ValType, resolver) {
-  const Node = listViewNode(ValType, resolver)
+  const ProofNode = resolver.resolve({ ListProofNode: ValType })
 
   class ListView extends createType({
     name: `ListView<${ValType.inspect()}>`
   }) {
     constructor (obj) {
-      const root = Node.from(obj)
+      const root = ProofNode.from(obj)
       const { depth, values } = parseTreeStructure(root)
 
       // Guaranteed to be sorted by ascending `node.pos`

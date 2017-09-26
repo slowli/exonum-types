@@ -34,6 +34,29 @@
         ]
       }
     }
+  },
+
+  {
+    "name": "ListProofNode",
+    "factory": {
+      "typeParams": [{ "name": "T" }],
+      "union": [
+        {
+          "name": "branch",
+          "type": {
+            "struct": [
+              { "name": "left", "type": { "ListProofNode": { "typeParam": "T" } } },
+              { "name": "right", "type": { "ListProofNode": { "typeParam": "T" } } }
+            ]
+          }
+        },
+        { "name": "stub", "type": { "ListProofNode": { "typeParam": "T" } } },
+        { "name": "hash", "type": "Hash" },
+        { "name": "val", "type": { "typeParam": "T" } }
+      ]
+    }
+  },
+
   {
     "name": "Bits256",
     "struct": [
@@ -42,5 +65,52 @@
       { "name": "bitLengthByte", "type": "Uint8" }
     ]
   },
+  {
+    "name": "MapProofNode",
+    "factory": {
+      "typeParams": [{ "name": "V" }],
+      "union": [
+        {
+          "name": "branch",
+          "type": {
+            "struct": [
+              { "name": "left", "type": { "MapProofNode": { "typeParam": "V" } } },
+              { "name": "right", "type": { "MapProofNode": { "typeParam": "V" } } },
+              { "name": "leftKey", "type": "Bits256" },
+              { "name": "rightKey", "type": "Bits256" }
+            ]
+          }
+        },
+        { "name": "hash", "type": "Hash" },
+        { "name": "val", "type": { "typeParam": "V" } }
+      ]
+    }
+  },
+  {
+    "name": "MapProofRoot",
+    "factory": {
+      "typeParams": [{ "name": "V" }],
+      "union": [
+        { "name": "empty", "type": "None" },
+        {
+          "name": "stub",
+          "type": {
+            "struct": [
+              { "name": "key", "type": "Bits256" },
+              {
+                "name": "value",
+                "type": {
+                  "union": [
+                    { "name": "hash", "type": "Hash" },
+                    { "name": "val", "type": { "typeParam": "V" } }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        { "name": "tree", "type": { "MapProofNode": { "typeParam": "V" } } }
+      ]
+    }
   }
 ]

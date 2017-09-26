@@ -1,66 +1,11 @@
 import { OrderedMap } from 'immutable'
 
 import { memoize, rawValue, setRawValue } from './lowlevel/common'
-import std from './std'
+import types from './blockchain'
 import { hash } from './crypto'
-import Bits256, { getBit } from './Bits256'
+import { getBit } from './Bits256'
 
-const Hash = std.resolve('Hash')
-
-const MAP_VIEW_NODE_DEF = [
-  {
-    name: 'MapViewNode',
-    union: [
-      {
-        name: 'branch',
-        type: {
-          struct: [
-            { name: 'left', type: 'MapViewNode' },
-            { name: 'right', type: 'MapViewNode' },
-            { name: 'leftKey', type: 'Bits256' },
-            { name: 'rightKey', type: 'Bits256' }
-          ]
-        }
-      },
-      { name: 'hash', type: 'Hash' },
-      { name: 'val', type: 'T' }
-    ]
-  },
-  {
-    name: 'MapViewRoot',
-    union: [
-      { name: 'empty', type: 'None' },
-      {
-        name: 'stub',
-        type: {
-          struct: [
-            { name: 'key', type: 'Bits256' },
-            {
-              name: 'value',
-              type: {
-                union: [
-                  { name: 'hash', type: 'Hash' },
-                  { name: 'val', type: 'T' }
-                ]
-              }
-            }
-          ]
-        }
-      },
-      { name: 'tree', type: 'MapViewNode' }
-    ]
-  }
-]
-
-/**
- * Creates a `MapViewNode<ValType>` for a specific type of values.
- */
-function mapViewRoot (ValType, resolver) {
-  // XXX: works only with "native" type definitions
-  return std.resolver.addNativeTypes({ Bits256, T: ValType })
-    .add(MAP_VIEW_NODE_DEF)
-    .resolve('MapViewRoot')
-}
+const { Hash, Bits256 } = types
 
 /**
  * Walks the tree and parses the structure of a proof for MapView.
@@ -226,12 +171,11 @@ const PROXIED_METHODS = [
 ]
 
 export default function mapView (ValType, resolver) {
-  // The `Root<ValType>` class
-  const Root = mapViewRoot(ValType, resolver)
+  const ProofRoot = resolver.resolve({ MapProofRoot: ValType })
 
   class MapView {
     constructor (obj) {
-      const root = Root.from(obj)
+      const root = ProofRoot.from(obj)
 
       let mapEntries = []
 
