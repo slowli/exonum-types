@@ -6,7 +6,7 @@ import { validateAndResolveFields } from './TypeResolver'
 
 const DEFAULT_MARKER = 'type'
 
-export function parseUnion (obj, marker, variantNames) {
+function parseUnion (obj, marker, variantNames) {
   let variantName, variant
 
   if (obj[marker]) {
