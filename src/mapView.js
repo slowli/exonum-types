@@ -15,21 +15,19 @@ function parseTreeStructure (tree) {
   const nodes = []
   const leaves = []
 
-  /**
-   * Recursively walks the tree from root to leaves.
-   */
-  function walkTree (node, key = Bits256.from('')) {
+  function pushNode (node, key) {
     node.fullKey = key
     nodes.push(node)
+  }
 
-    switch (node.type) {
-      case 'val':
-      case 'hash':
-        leaves.push(node)
-        break
-      case 'branch':
-        const { left, right, leftKey, rightKey } = node.branch
+  pushNode(tree, Bits256.from(''))
 
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i]
+    const key = node.fullKey
+
+    node.match({
+      branch: ({ left, right, leftKey, rightKey }) => {
         if (key.bitLength() === 0) {
           // Root branch has the special rules as to the validity of the keys:
           // Neither of the keys should be a substring of the other key
@@ -53,13 +51,15 @@ function parseTreeStructure (tree) {
         }
 
         // `key.append(...)` checks overflow of keys
-        walkTree(left, key.append(leftKey))
-        walkTree(right, key.append(rightKey))
-        break
-    }
+        pushNode(left, key.append(leftKey))
+        pushNode(right, key.append(rightKey))
+      },
+
+      // Not a branch node
+      _: () => leaves.push(node)
+    })
   }
 
-  walkTree(tree)
   const values = leaves.filter(node => node.type === 'val')
 
   // All values must have terminal keys
@@ -93,15 +93,11 @@ function stubHash ({ key, value }) {
  * @returns {Uint8Array}
  */
 function treeHash (node) {
-  switch (node.type) {
-    case 'hash':
-      return node.hash
-    case 'val':
-      return hash(node.val)
-    case 'branch':
-      const { left, right } = node.branch
-      return hash(treeHash(left), treeHash(right), left.fullKey, right.fullKey)
-  }
+  return node.match({
+    hash: (h) => h,
+    val: (val) => hash(val),
+    branch: ({ left, right }) => hash(treeHash(left), treeHash(right), left.fullKey, right.fullKey)
+  })
 }
 
 /**
@@ -177,27 +173,21 @@ export default function mapView (ValType, resolver) {
     constructor (obj) {
       const root = ProofRoot.from(obj)
 
-      let mapEntries = []
-
-      switch (root.type) {
-        case 'empty':
-          break
-        case 'stub':
-          const stub = root.stub
+      const mapEntries = root.match({
+        empty: () => [],
+        stub: (stub) => {
           validateStub(stub)
-          if (stub.value.type === 'val') {
-            // Initialize the tree with a single element
-            mapEntries = [[stub.key.getOriginal('bytes'), stub.value.val]]
-          } else {
-            // No visible elements in the tree
-          }
-          break
-        case 'tree':
-          const { values } = parseTreeStructure(root.tree)
+          return stub.value.match({
+            val: (val) => [[stub.key.getOriginal('bytes'), val]],
+            _: () => []
+          })
+        },
+        tree: (tree) => {
+          const { values } = parseTreeStructure(tree)
           // Guaranteed to be sorted by ascending `node.pos`
-          mapEntries = values.map(node => [node.fullKey.getOriginal('bytes'), node.val])
-          break
-      }
+          return values.map(node => [node.fullKey.getOriginal('bytes'), node.val])
+        }
+      })
 
       const map = OrderedMap(mapEntries)
       setRawValue(this, { root, map })
@@ -205,15 +195,11 @@ export default function mapView (ValType, resolver) {
 
     rootHash () {
       const root = rawValue(this).root
-
-      switch (root.type) {
-        case 'empty':
-          return new Uint8Array(32)
-        case 'stub':
-          return stubHash(root.stub)
-        case 'tree':
-          return treeHash(root.tree)
-      }
+      return root.match({
+        empty: () => new Uint8Array(32),
+        stub: (stub) => stubHash(stub),
+        tree: (tree) => treeHash(tree)
+      })
     }
 
     count () {
@@ -235,15 +221,11 @@ export default function mapView (ValType, resolver) {
      */
     mayHave (hash) {
       const root = rawValue(this).root
-
-      switch (root.type) {
-        case 'empty':
-          return false
-        case 'stub':
-          return Hash.from(hash).equals(root.stub.key.getOriginal('bytes'))
-        case 'tree':
-          return searchKey(root.tree, rawValue(Hash.from(hash)))
-      }
+      return root.match({
+        empty: () => false,
+        stub: (stub) => Hash.from(hash).equals(stub.key.getOriginal('bytes')),
+        tree: (tree) => searchKey(tree, rawValue(Hash.from(hash)))
+      })
     }
   }
 
