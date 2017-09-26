@@ -280,7 +280,7 @@ describe('union', () => {
     })
 
     it('should return a value', () => {
-      const RealList = std.resolver.addTypes([{
+      const RealList = std.resolver.add([{
         name: 'List',
         union: [
           { name: 'none', type: 'None' },
