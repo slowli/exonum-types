@@ -719,6 +719,28 @@ describe('TypeResolver', () => {
     expect(IntFoo).to.satisfy(isExonumType)
     expect(() => resolver.resolve({ typeParam: 'T' })).to.throw(msg)
   })
+
+  it('should fail to extend a non-existing type', () => {
+    expect(() => resolver.extend('Foo', (foo) => foo)).to.throw(/Type Foo does not exist/i)
+  })
+
+  it('should fail to apply an invalid extension function', () => {
+    resolver = resolver.addNativeType('Int8', integer(1))
+    expect(() => resolver.extend('Int8', () => {})).to.throw(/extended type.*Exonum type/i)
+  })
+
+  it('should extend a type', () => {
+    resolver = resolver.addNativeType('Int8', integer(1))
+      .extend('Int8', (Int8) => {
+        return class extends Int8 {
+          static foo () { return `bar${this.typeLength()}` }
+        }
+      })
+
+    const Int8 = resolver.resolve('Int8')
+    expect(Int8).to.satisfy(isExonumType)
+    expect(Int8.foo()).to.equal('bar1')
+  })
 })
 
 describe('dummyResolver', () => {

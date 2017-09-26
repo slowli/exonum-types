@@ -227,6 +227,41 @@ export default class TypeResolver {
     return new TypeResolver(newTypes, newFactories)
   }
 
+  /**
+   * Extends the type with the specified name by applying an extend function.
+   * The function typically should be constructed as
+   *
+   * ```javascript
+   * function extendFn (Type) {
+   *   return class extends Type { ... }
+   * }
+   * ```
+   *
+   * For example, you may add new methods or change some serialization rules
+   * in the extension.
+   *
+   * This method does not check that the function output is actually a type extension,
+   * so you need to be careful.
+   *
+   * @param {string} name
+   * @param {(Class<ExonumType>) => Class<ExonumType>} extendFn
+   * @returns {TypeResolver}
+   *   resolver with the type replaced by its extension
+   */
+  extend (name, extendFn) {
+    let Type = this.types.get(name)
+    if (!Type) {
+      throw new Error(`Type ${name} does not exist`)
+    }
+
+    Type = extendFn(Type)
+    if (!isExonumType(Type)) {
+      throw new TypeError('Extended type needs to be an Exonum type')
+    }
+
+    return new TypeResolver(this.types.set(name, Type), this.factories)
+  }
+
   _hasType (name) {
     return this.types.has(name) ||
       (this._pendingTypes && this._pendingTypes.has(name))
