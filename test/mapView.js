@@ -6,7 +6,7 @@ import dirtyChai from 'dirty-chai'
 
 import mapView from '../src/mapView'
 import { convertMapJSON } from '../src/jsonConverters'
-import fixedBuffer from '../src/lowlevel/fixedBuffer'
+import types from '../src/blockchain'
 
 import samples from './data/mapView.json'
 
@@ -15,21 +15,19 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
-const Hash = fixedBuffer(32)
-
 function padWithZeros (bits) {
   while (bits.length < 256) bits = bits + '0'
-  return Hash.from({ bin: bits })
+  return { bin: bits }
 }
 
 function padWithOnes (bits) {
   while (bits.length < 256) bits = bits + '1'
-  return Hash.from({ bin: bits })
+  return { bin: bits }
 }
 
 function padWithRandom (bits) {
   while (bits.length < 256) bits = bits + (Math.random() > 0.5 ? '1' : '0')
-  return Hash.from({ bin: bits })
+  return { bin: bits }
 }
 
 describe('mapView', () => {
@@ -39,7 +37,7 @@ describe('mapView', () => {
       const expected = sample.expected
       const json = convertMapJSON(sample.data)
       const elementLength = expected.elementLength
-      const MapView = mapView(fixedBuffer(elementLength))
+      const MapView = mapView({ fixedBuffer: elementLength }, types.resolver)
 
       let map
 
