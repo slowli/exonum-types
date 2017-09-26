@@ -34,5 +34,13 @@
         ]
       }
     }
+  {
+    "name": "Bits256",
+    "struct": [
+      { "name": "isTerminal", "type": "Bool" },
+      { "name": "bytes", "type": "Hash" },
+      { "name": "bitLengthByte", "type": "Uint8" }
+    ]
+  },
   }
 ]
