@@ -25,23 +25,35 @@ export function parseUnion (obj, marker, variantNames) {
   return variantName ? [variantName, variant] : undefined
 }
 
-/** TODO: implement a simple matcher a la
-
-@example
-  const MaybePoint = union([
-    { name: 'none', type: 'None' },
-    { name: 'some', type: 'Point' }
-  ])
-  const x = new MaybePoint({ some: [4, 5] })
-  x.match(
-    'some', ({x, y}) => console.log(`Point: (${x}, ${y})`,
-    'none', () => console.log('I got nothing')
-  )
-*/
-
 /**
- * Union type factory. Tagged union (aka enum, aka type sum) is a type,
+ * Tagged union (aka enum, aka type sum) is a type,
  * instances of which belong to one of the defined variants.
+ *
+ * Tagged unions are specified by an array of variant specs. A variant spec
+ * is similar to field spec in `struct`s; it contains the name of the variant
+ * and its type.
+ *
+ * JSON presentation: an object with a single key, the active variant name, mapped
+ * to the JSON presentation of the variant.
+ *
+ * Binary serialization: `Uint8` index of the variant (0-based, taken from the order
+ * of the variants in the spec), followed by the serialization of the variant.
+ *
+ * Note: all unions are considered var-length types, even if all variants have the same
+ * type length. This is to assist in forward compatibility: a new variant may appear
+ * with a different type length.
+ *
+ * @example
+ *   const StrOrInt = std.union([
+ *     { name: 'str', type: 'Str' },
+ *     { name: 'int', type: 'Uint32' }
+ *   ])
+ *   let x = StrOrInt.from({ str: 'Hello, world' })
+ *   x = StrOrInt.int(5) // Shortcuts are available to initialize variants
+ *   console.log(x.type) // 'int'
+ *   console.log(x.int) // 5, primitive JS value
+ *   console.log(x.str) // undefined
+ *   console.log(x.toJSON()) // { int: 5 }
  */
 function union ({ marker, variants }, resolver) {
   const variantNames = variants.map(f => f.name)
@@ -95,6 +107,41 @@ function union ({ marker, variants }, resolver) {
       return rawValue(this).value
     }
 
+    /**
+     * Matches this union against a *matcher* object. The object should have
+     * function properties named according to variants; the one corresponding
+     * to the actual variant will be invoked. Alternatively, if there is no
+     * function matching this object's variant, but there is a *sink* method `_`,
+     * it will be invoked instead. In both cases, the invoked method is supplied
+     * with the active variant.
+     *
+     * @param {Object} matcher
+     *
+     * @example
+     *   const MaybePoint = std.union([
+     *     { name: 'none', type: 'None' },
+     *     { name: 'some', type: Point } // Point is a struct with fields `x` and `y`
+     *   ])
+     *   const x = new MaybePoint({ some: [4, 5] })
+     *   x.match({
+     *     some: ({x, y}) => console.log(`Point: (${x}, ${y})`,
+     *     none: () => console.log('I got nothing')
+     *   })
+     */
+    match (matcher) {
+      return matchAndGet(this, matcher, 'get')
+    }
+
+    /**
+     * Same as `match`, but the invoked method is supplied with Exonum-typed object,
+     * without coercion to a "primitive" value.
+     *
+     * @param {Object} matcher
+     */
+    matchOriginal (matcher) {
+      return matchAndGet(this, matcher, 'getOriginal')
+    }
+
     _doSerialize (buffer) {
       buffer[0] = variantNames.indexOf(getVariant(this))
       getValue(this).serialize(buffer.subarray(1))
@@ -115,6 +162,21 @@ function union ({ marker, variants }, resolver) {
 
   function getValue (union) {
     return rawValue(union).value
+  }
+
+  function matchAndGet (union, matcher, getter) {
+    if (!matcher || typeof matcher !== 'object') {
+      throw new TypeError('Matcher should be an object')
+    }
+
+    const variant = getVariant(union)
+    if (typeof matcher[variant] === 'function') {
+      return matcher[variant](union[getter](variant))
+    } else if (typeof matcher._ === 'function') {
+      return matcher._(union[getter](variant))
+    } else {
+      // throw?
+    }
   }
 
   variantNames.forEach(name => {

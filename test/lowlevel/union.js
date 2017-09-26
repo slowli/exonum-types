@@ -224,6 +224,104 @@ describe('union', () => {
     })
   })
 
+  describe('match', () => {
+    it('should throw if invoked not with an object', () => {
+      let x = StrOrInt.str('123')
+
+      const invalidMatchers = [ false, 5, 'abcd', null ]
+      invalidMatchers.forEach(invalid => {
+        expect(() => x.match(invalid)).to.throw(/matcher should be an object/i)
+      })
+    })
+
+    it('should not try to invoke the variant handle if it is not a function', () => {
+      let x = StrOrInt.str('123')
+      expect(x.match({
+        str: 123,
+        int: () => { throw new Error('This should not be invoked!') }
+      })).to.be.undefined()
+    })
+
+    it('should not try to invoke the sink handle if it is not a function', () => {
+      let x = StrOrInt.str('123')
+      expect(x.match({
+        str: 123,
+        int: () => { throw new Error('This should not be invoked!') },
+        _: 'bar'
+      })).to.be.undefined()
+    })
+
+    it('should invoke the matching method handle', (done) => {
+      let x = StrOrInt.str('123')
+      x.match({
+        str (str) { expect(str).to.equal('123'); done() },
+        int () { throw new Error('This should not be invoked!') }
+      })
+    })
+
+    it('should be usable for descructuring variants', (done) => {
+      const x = List.some({ head: 42, tail: '...' })
+      x.match({
+        some ({ head, tail }) {
+          expect(head).to.equal(42)
+          expect(tail).to.equal('...')
+          done()
+        },
+        none () { throw new Error('not as planned') }
+      })
+    })
+
+    it('should invoke the sink handle if there is no matching variant', (done) => {
+      const x = new StrOrInt({ int: 25 })
+      x.match({
+        str (str) { throw new Error('This should not be invoked!') },
+        _ (int) { expect(int).to.equal(25); done() }
+      })
+    })
+
+    it('should return a value', () => {
+      const RealList = std.resolver.addTypes([{
+        name: 'List',
+        union: [
+          { name: 'none', type: 'None' },
+          {
+            name: 'some',
+            type: {
+              struct: [
+                { name: 'head', type: 'Str' },
+                { name: 'tail', type: 'List' }
+              ]
+            }
+          }
+        ]
+      }]).resolve('List')
+
+      let lst = RealList.from({ some: ['foo', { some: ['bar', { none: null }] }] })
+      let elems = []
+      while (lst) {
+        lst = lst.match({
+          some: ({ head, tail }) => { elems.push(head); return tail }
+        })
+      }
+      expect(elems).to.deep.equal(['foo', 'bar'])
+      expect(lst).to.be.undefined()
+    })
+  })
+
+  describe('matchOriginal', () => {
+    it('should invoke the matching method handle with original Exonum-typed object', (done) => {
+      let x = StrOrInt.int(123)
+      x.matchOriginal({
+        str (str) { throw new Error('This should not be invoked!') },
+        int (int) {
+          expect(int).to.satisfy(isExonumObject)
+          expect(+int).to.equal(123)
+          done()
+        }
+      })
+    })
+  })
+
   describe('serialize', () => {
     it('should serialize as a marker + variant in the basic case', () => {
       const x = new StrOrInt({ int: 255 })
