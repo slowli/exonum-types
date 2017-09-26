@@ -33,10 +33,7 @@ function array (ElementType, resolver) {
   }) {
     constructor (arr) {
       let elements
-      if (!arr) {
-        // Initialize an empty array
-        elements = []
-      } else if (Array.isArray(arr)) {
+      if (Array.isArray(arr)) {
         elements = arr.map(x => ElementType.from(x))
       } else {
         throw new TypeError('Invalid array initializer, JS array expected')

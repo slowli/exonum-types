@@ -243,7 +243,7 @@ for (let typeName in typeDefs) {
 
     describe('serialize', () => {
       it('should serialize as Uint8Array', () => {
-        const s = new Type().serialize()
+        const s = new Type(0).serialize()
         expect(s).to.be.a('uint8array')
       })
 

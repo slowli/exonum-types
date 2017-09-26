@@ -39,10 +39,7 @@ function fixedBuffer (length) {
         }
       }
 
-      if (obj === undefined) {
-        // Initialize with zeros
-        _raw = new Uint8Array(length)
-      } else if (typeof obj === 'string') {
+      if (typeof obj === 'string') {
         // String-based constructor
         if (!encoding) encoding = 'hex'
         if (!validateString(obj, length, encoding)) {

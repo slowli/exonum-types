@@ -1,5 +1,9 @@
 import { rawValue, getMethodNames, createType } from './common'
 
+function isStr (maybeStr) {
+  return maybeStr && typeof rawValue(maybeStr) === 'string'
+}
+
 /**
  * Calculates string length in bytes.
  *
@@ -62,8 +66,12 @@ export default class Str extends createType({
   proxiedMethods: getMethodNames(String.prototype),
   name: 'Str'
 }) {
-  constructor (obj) {
-    super(obj.toString())
+  constructor (str) {
+    if (isStr(str)) str = rawValue(str)
+    if (typeof str !== 'string') {
+      throw new TypeError(`Cannot construct Str from ${str}`)
+    }
+    super(str)
   }
 
   _doSerialize (buffer) {

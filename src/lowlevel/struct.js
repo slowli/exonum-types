@@ -49,10 +49,10 @@ function struct (spec, resolver) {
     typeLength: hasFixedLength ? fixedLength : undefined,
     name: structName(spec)
   }) {
-    constructor (...args) {
+    constructor (objectOrArray) {
       // `null` signals to opt out of external raw value exposition, e.g.,
       // in the `get` method below
-      super(Rec(parseInitializer(spec, args, Rec)), null)
+      super(Rec(parseInitializer(spec, objectOrArray, Rec)), null)
     }
 
     /**
@@ -163,34 +163,30 @@ export default initFactory(struct, {
  * @param {Array<FieldSpec>} spec
  * @param {any} args
  */
-function parseInitializer (spec, args, Rec) {
+function parseInitializer (spec, arg, Rec) {
   let parsed = {}
   let i
 
-  if (args.length === 1 && args[0] instanceof Rec) {
+  if (arg instanceof Rec) {
     // Shortcut if we have been a fitting `Record` object
-    return args[0]
-  } if (args.length === 1 && Array.isArray(args[0])) {
+    return arg
+  } if (Array.isArray(arg)) {
     // Assume `obj` is the sequence of properties
     // in the order of their declaration in the type
-    for (i = 0; i < args[0].length; i++) {
-      const T = spec[i].type
-      parsed[spec[i].name] = T.from(args[0][i])
-    }
-  } else if (args.length === 1 && typeof args[0] === 'object') {
     for (i = 0; i < spec.length; i++) {
-      const val = args[0][spec[i].name]
-      if (val !== undefined) {
-        const T = spec[i].type
-        parsed[spec[i].name] = T.from(val)
-      }
+      const T = spec[i].type
+      parsed[spec[i].name] = T.from(arg[i])
+      // This will throw automatically if there are not enough props,
+      // and `T.from` does not support instancing from `undefined`
+    }
+  } else if (arg && typeof arg === 'object') {
+    for (i = 0; i < spec.length; i++) {
+      const val = arg[spec[i].name]
+      const T = spec[i].type
+      parsed[spec[i].name] = T.from(val)
     }
   } else {
-    // Assume arguments are the properties
-    for (i = 0; i < args.length; i++) {
-      const T = spec[i].type
-      parsed[spec[i].name] = T.from(args[i])
-    }
+    throw new TypeError(`Cannot instantiate struct from ${arg}`)
   }
 
   return parsed

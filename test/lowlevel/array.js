@@ -38,7 +38,7 @@ describe('array', () => {
 
   describe('constructor', () => {
     it('should create an empty array', () => {
-      const x = new StrArray()
+      const x = new StrArray([])
       expect(x.count()).to.equal(0)
     })
 
@@ -63,6 +63,9 @@ describe('array', () => {
     const invalidInitializers = [
       ['string', 'foo'],
       ['boolean', true],
+      ['number', 12],
+      ['null', null],
+      ['undefined', undefined],
       ['uint8array', new Uint8Array(10)],
       ['object', { 1: 'bar' }],
       ['function', () => {}]

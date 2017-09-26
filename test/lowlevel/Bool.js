@@ -39,6 +39,16 @@ describe('Bool', function () {
       x = new Bool(Bool.FALSE)
       expect(rawValue(x)).to.be.false()
     })
+
+    it('should not accept anything else', () => {
+      const unacceptable = [
+        [], {}, () => {}, null, undefined, '', 'true', 5, NaN
+      ]
+
+      unacceptable.forEach(x => {
+        expect(() => new Bool(x)).to.throw(/cannot construct Bool/i)
+      })
+    })
   })
 
   describe('serialize', () => {

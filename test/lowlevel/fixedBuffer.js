@@ -51,11 +51,6 @@ describe('fixedBuffer', () => {
       expect(rawValue(buf)).to.equalBytes('fedcba98')
     })
 
-    it('should accept no-args call', () => {
-      const buf = new ShortBuffer()
-      expect(rawValue(buf)).to.equalBytes('00000000')
-    })
-
     it('should not accept hex string with invalid length', () => {
       expect(() => new ShortBuffer('123')).to.throw(TypeError, /string/i)
       expect(() => new ShortBuffer('aaaaaaaaaa')).to.throw(TypeError, /string/i)
@@ -81,7 +76,7 @@ describe('fixedBuffer', () => {
     })
 
     it('should not accept another buffer with invalid length', () => {
-      let buf = new LongBuffer()
+      let buf = new LongBuffer(new Uint8Array(32))
       expect(() => new ShortBuffer(buf)).to.throw(/length/i)
       buf = new ShortBuffer([1, 2, 3, 4])
       expect(() => new LongBuffer(buf)).to.throw(/length/i)
@@ -135,7 +130,7 @@ describe('fixedBuffer', () => {
     })
 
     it('should shorten long buffer', () => {
-      const buf = new LongBuffer()
+      const buf = new LongBuffer(new Array(32))
       expect(buf.toString()).to.equal('Buffer(00000000...)')
     })
 
@@ -166,8 +161,8 @@ describe('fixedBuffer', () => {
     })
 
     it('should return different values for differing buffer lengths', () => {
-      const x = new ShortBuffer()
-      const y = fixedBuffer(5).from()
+      const x = new ShortBuffer([0, 0, 0, 0])
+      const y = fixedBuffer(5).from([0, 0, 0, 0, 0])
       expect(x.hashCode()).to.not.equal(y.hashCode())
     })
 
@@ -186,8 +181,8 @@ describe('fixedBuffer', () => {
     })
 
     it('should return false for diffrent length buffer objects', () => {
-      const x = new ShortBuffer()
-      const y = fixedBuffer(5).from()
+      const x = new ShortBuffer([0, 0, 0, 0])
+      const y = fixedBuffer(5).from([0, 0, 0, 0, 0])
       expect(x.equals(y)).to.be.false()
     })
 
