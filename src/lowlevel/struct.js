@@ -104,15 +104,13 @@ function struct (spec, resolver) {
     }
 
     byteLength () {
-      return segments.byteLength(propertyNames.map(name => this.getOriginal(name)),
-        propertyTypes)
+      return segments.byteLength(propertyNames.map(name => this.getOriginal(name)))
     }
 
     // XXX: `offset` here is a hack needed due to quirky message serialization
     _doSerialize (buffer, { offset = 0 } = {}) {
       return segments.serialize(buffer,
         propertyNames.map(name => this.getOriginal(name)),
-        propertyTypes,
         { offset, heapPos: fixedLength })
     }
 

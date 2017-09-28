@@ -1,5 +1,3 @@
-import { Seq } from 'immutable'
-
 import { uinteger } from './integers'
 
 const Uint32 = uinteger(4)
@@ -15,8 +13,8 @@ function serializeSegment (buffer, segment) {
   return buffer
 }
 
-function _byteLength (val, Type) {
-  const typeLength = Type.typeLength()
+function _byteLength (val) {
+  const typeLength = val.constructor.typeLength()
   return typeLength === undefined
     ? SEGMENT_LENGTH + val.byteLength()
     : typeLength
@@ -27,13 +25,10 @@ function _byteLength (val, Type) {
  * belongs to a corresponding type.
  *
  * @param {Array<ExonumType> | IndexedCollection<ExonumType>} values
- * @param {Array<Class<ExonumType>> | IndexedCollection<Class<ExonumType>>} types
  * @returns {number}
  */
-export function byteLength (values, types) {
-  return Seq(types)
-    .zip(values)
-    .reduce((acc, { 0: type, 1: val }) => acc + _byteLength(val, type), 0)
+export function byteLength (values) {
+  return values.reduce((acc, val) => acc + _byteLength(val), 0)
 }
 
 /**
@@ -51,7 +46,6 @@ export function heapStart (types) {
  *
  * @param {Uint8Array} buffer
  * @param {Array<ExonumType> | IndexedCollection<ExonumType>} values
- * @param {Array<Class<ExonumType>> | IndexedCollection<Class<ExonumType>>} types
  * @param {number} [heapPos]
  *   the position of "heap" memory within the buffer. Can be calculated with `heapStart()`
  *   and cached beforehand
@@ -59,16 +53,16 @@ export function heapStart (types) {
  *   offset to add to segment start positions. Otherwise, the offset does not influence
  *   serialization; e.g., it still starts from the start of the buffer.
  */
-export function serialize (buffer, values, types, { heapPos, offset = 0 } = {}) {
+export function serialize (buffer, values, { heapPos, offset = 0 } = {}) {
   if (heapPos === undefined) {
-    heapPos = heapStart(types)
+    heapPos = heapStart(values.map(val => val.constructor))
   }
 
   const initHeap = heapPos
   let mainPos = 0
 
-  Seq(types).zip(values).forEach(({ 0: type, 1: val }) => {
-    const typeLength = type.typeLength()
+  values.forEach(val => {
+    const typeLength = val.constructor.typeLength()
 
     if (typeLength === undefined) {
       // Serialize the value in the "heap"
