@@ -44,20 +44,6 @@ export function isExonumObject (maybeExonumObj) {
   return getKind(maybeExonumObj) === 'object'
 }
 
-const EXONUM_TYPEREF_PROP = typeof Symbol !== 'undefined'
-  ? Symbol.for('exonum.typeref')
-  : '__exonumTyperef'
-
-/**
- * Retrieves the Exonum type corresponding to this Exonum object.
- *
- * @param {ExonumType} exonumObj
- */
-export function getType (exonumObj) {
-  if (!isExonumObject(exonumObj)) return undefined
-  return exonumObj[EXONUM_TYPEREF_PROP]
-}
-
 const EXONUM_RAW_PROP = typeof Symbol !== 'undefined'
   ? Symbol.for('exonum.raw')
   : '__exonumRaw'
@@ -211,7 +197,6 @@ export function createType ({
 
   Object.defineProperty(ExonumType, EXONUM_KIND_PROP, { value: kind })
   Object.defineProperty(ExonumType.prototype, EXONUM_KIND_PROP, { value: 'object' })
-  Object.defineProperty(ExonumType.prototype, EXONUM_TYPEREF_PROP, { value: ExonumType })
 
   // XXX: Is it possible to get rid of `proxiedMethods` and perform movement of methods
   // individually in each case?

@@ -35,15 +35,17 @@ import * as segments from './segments'
  */
 function struct (spec, resolver) {
   const propertyNames = spec.map(f => f.name)
+  const propertyTypes = List(spec.map(f => f.type))
+
   const recordSpec = {}
   propertyNames.forEach(name => { recordSpec[name] = undefined })
   // The backing `Record` class
   const Rec = Record(recordSpec)
 
   // The length of the fixed part of the structure
-  const fixedLength = segments.heapStart(spec.map(f => f.type))
+  const fixedLength = segments.heapStart(propertyTypes)
   // Is this structure fixed-length?
-  const hasFixedLength = spec.every(f => f.type.typeLength() !== undefined)
+  const hasFixedLength = propertyTypes.every(T => T.typeLength() !== undefined)
 
   class StructType extends createType({
     typeLength: hasFixedLength ? fixedLength : undefined,
@@ -102,15 +104,16 @@ function struct (spec, resolver) {
     }
 
     byteLength () {
-      return segments.byteLength(propertyNames.map(name => this.getOriginal(name)))
+      return segments.byteLength(propertyNames.map(name => this.getOriginal(name)),
+        propertyTypes)
     }
 
     // XXX: `offset` here is a hack needed due to quirky message serialization
     _doSerialize (buffer, { offset = 0 } = {}) {
       return segments.serialize(buffer,
         propertyNames.map(name => this.getOriginal(name)),
-        fixedLength,
-        { offset })
+        propertyTypes,
+        { offset, heapPos: fixedLength })
     }
 
     toJSON () {

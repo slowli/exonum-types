@@ -1,4 +1,4 @@
-import { List } from 'immutable'
+import { Seq, List } from 'immutable'
 
 import initFactory from './initFactory'
 import { createType, rawValue, rawOrSelf } from './common'
@@ -9,6 +9,29 @@ import * as segments from './segments'
 // (e.g., `push`) with wrappers?
 
 const SizeType = uinteger(4)
+
+/**
+ * Returns a sequence of types in serialized array for use in low-level `segments` routines.
+ * The sequence consists of the `Uint32` number of elements, followed by the element type.
+ *
+ * @param {Class<ExonumType>} ElementType
+ *   array element type
+ * @param {number} length
+ *   number of elements in the array
+ */
+function serializedTypeSeq (ElementType, length) {
+  return Seq({
+    _pos: 0,
+
+    next () {
+      const Type = (this._pos === 0) ? SizeType : ElementType
+      this._pos++
+      return (this._pos > length + 1)
+        ? { done: true }
+        : { value: Type, done: false }
+    }
+  })
+}
 
 /**
  * `Array<T>` represents a variable number of elements of type `T`.
@@ -49,7 +72,9 @@ function array (ElementType, resolver) {
     }
 
     byteLength () {
-      return segments.byteLength(rawValue(this).serialization)
+      return segments.byteLength(
+        rawValue(this).serialization,
+        serializedTypeSeq(ElementType, this.count()))
     }
 
     /**
@@ -96,7 +121,9 @@ function array (ElementType, resolver) {
 
     _doSerialize (buffer) {
       // XXX: this differs from the current serialization protocol!
-      segments.serialize(buffer, rawValue(this).serialization)
+      segments.serialize(buffer,
+        rawValue(this).serialization,
+        serializedTypeSeq(ElementType, this.count()))
     }
 
     toJSON () {
