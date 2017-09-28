@@ -93,7 +93,7 @@ export default class TypeResolver {
 
       const factory = namedFactories[name]
       if (!isExonumFactory(factory)) {
-        throw new TypeError('Factory needs to be initialized with `initFactory()`')
+        throw new TypeError(`Factory ${name} needs to be initialized with initFactory()`)
       }
     })
 
