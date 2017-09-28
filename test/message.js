@@ -5,9 +5,7 @@ import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
 import * as crypto from '../src/crypto'
-import { resolver } from '../src/std'
-import message from '../src/message'
-import types from '../src/blockchain'
+import types from '../src/std'
 
 import blockData from './data/block.json'
 
@@ -18,11 +16,8 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
-const _resolver = resolver.addFactory('message', message)
-const createType = _resolver.resolve.bind(_resolver)
-
 describe('Message', () => {
-  const TxTransfer = createType({
+  const TxTransfer = types.resolve({
     message: {
       serviceId: 1,
       messageId: 128,
@@ -34,7 +29,7 @@ describe('Message', () => {
     }
   })
 
-  const TxCreate = createType({
+  const TxCreate = types.resolve({
     message: {
       serviceId: 1,
       messageId: 129,
@@ -50,7 +45,7 @@ describe('Message', () => {
     return this.body().from
   }
 
-  const ComplexMessage = createType({
+  const ComplexMessage = types.resolve({
     message: {
       serviceId: 1,
       messageId: 130,
@@ -331,7 +326,7 @@ describe('Message', () => {
 
   describe('toString', () => {
     it('should return descriptive content for the message', () => {
-      const Msg = createType({
+      const Msg = types.resolve({
         message: {
           serviceId: 1,
           messageId: 0,

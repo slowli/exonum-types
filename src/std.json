@@ -1,36 +1,129 @@
 [
+  { "name": "Uint8", "uinteger": 1 },
+  { "name": "Int8", "integer": 1 },
+  { "name": "Uint16", "uinteger": 2 },
+  { "name": "Int16", "integer": 2 },
+  { "name": "Uint32", "uinteger": 4 },
+  { "name": "Int32", "integer": 4 },
+  { "name": "Uint64", "uinteger": 8 },
+  { "name": "Int64", "integer": 8 },
+
+  { "name": "PublicKey", "fixedBuffer": 32 },
+  { "name": "Signature", "fixedBuffer": 64 },
+  { "name": "Hash", "fixedBuffer": 32 },
+
   {
-    "name": "Uint8", "uinteger": 1
+    "name": "Block",
+    "struct": [
+      { "name": "schemaVersion", "type": "Uint16" },
+      { "name": "proposerId", "type": "Uint16" },
+      { "name": "height", "type": "Uint64" },
+      { "name": "txCount", "type": "Uint32" },
+      { "name": "prevHash", "type": "Hash" },
+      { "name": "txHash", "type": "Hash" },
+      { "name": "stateHash", "type": "Hash" }
+    ]
   },
   {
-    "name": "Int8", "integer": 1
+    "name": "TimeSpec",
+    "struct": [
+      { "name": "secs", "type": "Uint64" },
+      { "name": "nanos", "type": "Uint32" }
+    ]
   },
   {
-    "name": "Uint16", "uinteger": 2
-  },
-  {
-    "name": "Int16", "integer": 2
-  },
-  {
-    "name": "Uint32", "uinteger": 4
-  },
-  {
-    "name": "Int32", "integer": 4
-  },
-  {
-    "name": "Uint64", "uinteger": 8
-  },
-  {
-    "name": "Int64", "integer": 8
+    "name": "Precommit",
+    "message": {
+      "serviceId": 0,
+      "messageId": 4,
+      "body": {
+        "struct": [
+          { "name": "validator", "type": "Uint16" },
+          { "name": "height", "type": "Uint64" },
+          { "name": "round", "type": "Uint32" },
+          { "name": "proposeHash", "type": "Hash" },
+          { "name": "blockHash", "type": "Hash" },
+          { "name": "time", "type": "TimeSpec" }
+        ]
+      }
+    }
   },
 
   {
-    "name": "PublicKey", "fixedBuffer": 32
+    "name": "ListProofNode",
+    "factory": {
+      "typeParams": [{ "name": "T" }],
+      "union": [
+        {
+          "name": "branch",
+          "type": {
+            "struct": [
+              { "name": "left", "type": { "ListProofNode": { "typeParam": "T" } } },
+              { "name": "right", "type": { "ListProofNode": { "typeParam": "T" } } }
+            ]
+          }
+        },
+        { "name": "stub", "type": { "ListProofNode": { "typeParam": "T" } } },
+        { "name": "hash", "type": "Hash" },
+        { "name": "val", "type": { "typeParam": "T" } }
+      ]
+    }
+  },
+
+  {
+    "name": "Bits256",
+    "struct": [
+      { "name": "isTerminal", "type": "Bool" },
+      { "name": "bytes", "type": "Hash" },
+      { "name": "bitLengthByte", "type": "Uint8" }
+    ]
   },
   {
-    "name": "Signature", "fixedBuffer": 64
+    "name": "MapProofNode",
+    "factory": {
+      "typeParams": [{ "name": "V" }],
+      "union": [
+        {
+          "name": "branch",
+          "type": {
+            "struct": [
+              { "name": "left", "type": { "MapProofNode": { "typeParam": "V" } } },
+              { "name": "right", "type": { "MapProofNode": { "typeParam": "V" } } },
+              { "name": "leftKey", "type": "Bits256" },
+              { "name": "rightKey", "type": "Bits256" }
+            ]
+          }
+        },
+        { "name": "hash", "type": "Hash" },
+        { "name": "val", "type": { "typeParam": "V" } }
+      ]
+    }
   },
   {
-    "name": "Hash", "fixedBuffer": 32
+    "name": "MapProofRoot",
+    "factory": {
+      "typeParams": [{ "name": "V" }],
+      "union": [
+        { "name": "empty", "type": "None" },
+        {
+          "name": "stub",
+          "type": {
+            "struct": [
+              { "name": "key", "type": "Bits256" },
+              {
+                "name": "value",
+                "type": {
+                  "union": [
+                    { "name": "hash", "type": "Hash" },
+                    { "name": "val", "type": { "typeParam": "V" } }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        { "name": "tree", "type": { "MapProofNode": { "typeParam": "V" } } }
+      ]
+    }
   }
 ]

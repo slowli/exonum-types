@@ -1,17 +1,15 @@
 import { OrderedMap } from 'immutable'
 
 import { memoize, rawValue, setRawValue } from './lowlevel/common'
-import types from './blockchain'
+import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
 import { getBit } from './Bits256'
-
-const { Hash, Bits256 } = types
 
 /**
  * Walks the tree and parses the structure of a proof for MapView.
  * Throws errors if the structure is incorrect (i.e., some broken invariants).
  */
-function parseTreeStructure (tree) {
+function parseTreeStructure (tree, Bits256) {
   const nodes = []
   const leaves = []
 
@@ -166,7 +164,10 @@ const PROXIED_METHODS = [
   'entrySeq'
 ]
 
-export default function mapView (ValType, resolver) {
+function mapView (ValType, resolver) {
+  const Hash = resolver.resolve('Hash')
+  const Bits256 = resolver.resolve('Bits256')
+
   const ProofRoot = resolver.resolve({ MapProofRoot: ValType })
 
   class MapView {
@@ -183,7 +184,7 @@ export default function mapView (ValType, resolver) {
           })
         },
         tree: (tree) => {
-          const { values } = parseTreeStructure(tree)
+          const { values } = parseTreeStructure(tree, Bits256)
           // Guaranteed to be sorted by ascending `node.pos`
           return values.map(node => [node.fullKey.getOriginal('bytes'), node.val])
         }
@@ -240,3 +241,11 @@ export default function mapView (ValType, resolver) {
 
   return MapView
 }
+
+export default initFactory(mapView, {
+  name: 'mapView',
+
+  prepare (ValType, resolver) {
+    return resolver.resolve(ValType)
+  }
+})

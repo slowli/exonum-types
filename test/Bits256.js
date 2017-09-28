@@ -4,8 +4,8 @@ import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
-import blockchain from '../src/blockchain'
-const Bits256 = blockchain.Bits256
+import std from '../src/std'
+const Bits256 = std.Bits256
 
 const expect = chai
   .use(chaiBytes)

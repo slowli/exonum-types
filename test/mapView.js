@@ -6,7 +6,7 @@ import dirtyChai from 'dirty-chai'
 
 import mapView from '../src/mapView'
 import { convertMapJSON } from '../src/jsonConverters'
-import types from '../src/blockchain'
+import types from '../src/std'
 
 import samples from './data/mapView.json'
 
