@@ -34,6 +34,17 @@ describe('Message', () => {
     }
   })
 
+  const TxCreate = createType({
+    message: {
+      serviceId: 1,
+      messageId: 129,
+      body: [
+        { name: 'from', type: 'PublicKey', author: true },
+        { name: 'name', type: 'Str' }
+      ]
+    }
+  })
+
   // XXX: remove when meta for struct fields is implemented
   TxTransfer.prototype.author = function () {
     return this.body().from
@@ -42,7 +53,7 @@ describe('Message', () => {
   const ComplexMessage = createType({
     message: {
       serviceId: 1,
-      messageId: 129,
+      messageId: 130,
       body: [
         { name: 'from', type: 'PublicKey', author: true },
         { name: 'foo', type: 'Str' },
@@ -147,7 +158,7 @@ describe('Message', () => {
         '0000' + // networkId + protocolVersion
         '8000' + // messageId
         '0100' + // serviceId
-        '92000000' // messagee length
+        '92000000' // message length
       )
 
       expect(serialized.subarray(10, 10 + 32)).to.equalBytes(aliceKey.rawPub())
@@ -156,6 +167,37 @@ describe('Message', () => {
       expect(serialized.subarray(10 + 64, 10 + 72)).to.equalBytes('1027000000000000')
 
       expect(serialized.subarray(10 + 72)).to.equalBytes(msg.signature().serialize())
+    })
+
+    it('should implement quirky serialization of segments in message', () => {
+      const msg = TxCreate.from({
+        body: {
+          from: aliceKey.pub(),
+          name: 'Alice'
+        }
+      }).sign(aliceKey)
+
+      const serialized = msg.serialize()
+
+      // verify message header
+      expect(serialized.subarray(0, 10)).to.equalBytes(
+        '0000' + // networkId + protocolVersion
+        '8100' + // messageId
+        '0100' + // serviceId
+        '77000000' // message length (10 + 45 + 64 = 119 = 0x77)
+      )
+
+      expect(serialized.subarray(10, 10 + 32)).to.equalBytes(aliceKey.rawPub())
+
+      // The segment should be counter from the start of the *entire* message
+      expect(serialized.subarray(10 + 32, 10 + 40)).to.equalBytes(
+        '32000000' + // offset (50)
+        '05000000' // length (5)
+      )
+      // The 'Alice' string
+      expect(serialized.subarray(10 + 40, 10 + 45)).to.equalBytes('416c696365')
+
+      expect(serialized.subarray(10 + 45)).to.equalBytes(msg.signature().serialize())
     })
   })
 
@@ -218,7 +260,7 @@ describe('Message', () => {
         networkId: 0,
         protocolVersion: 0,
         serviceId: 1,
-        messageId: 129,
+        messageId: 130,
         body: {
           from: aliceKey.pub().toJSON(), // string
           foo: 'Hello',

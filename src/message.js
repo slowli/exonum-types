@@ -64,7 +64,7 @@ function message ({
     serializeForSigning () {
       const buffer = new Uint8Array(this.byteLength() - sigLength)
       this.header().serialize(buffer.subarray(0, headLength))
-      this.body().serialize(buffer.subarray(headLength))
+      this.body()._doSerialize(buffer.subarray(headLength), { offset: headLength })
       return buffer
     }
 
@@ -74,7 +74,9 @@ function message ({
       }
 
       this.header().serialize(buffer.subarray(0, headLength))
-      this.body().serialize(buffer.subarray(headLength, buffer.length - sigLength))
+      this.body()._doSerialize(buffer.subarray(headLength, buffer.length - sigLength), {
+        offset: headLength
+      })
       this.signature().serialize(buffer.subarray(buffer.length - sigLength))
     }
 

@@ -43,8 +43,11 @@ export function heapStart (types) {
  * @param {number} [heapPos]
  *   the position of "heap" memory within the buffer. Can be calculated with `heapStart()`
  *   and cached beforehand
+ * @param {number} [offset = 0]
+ *   offset to add to segment start positions. Otherwise, the offset does not influence
+ *   serialization; e.g., it still starts from the start of the buffer.
  */
-export function serialize (buffer, values, heapPos) {
+export function serialize (buffer, values, heapPos, { offset = 0 } = {}) {
   if (heapPos === undefined) {
     heapPos = heapStart(values.map(val => getType(val)))
   }
@@ -58,7 +61,7 @@ export function serialize (buffer, values, heapPos) {
       // Serialize the value in the "heap"
       const len = val.byteLength()
       val.serialize(buffer.subarray(heapPos, heapPos + len))
-      const segment = { start: heapPos, length: len }
+      const segment = { start: heapPos + offset, length: len }
       serializeSegment(buffer.subarray(mainPos, mainPos + SEGMENT_LENGTH), segment)
       heapPos += len
       mainPos += SEGMENT_LENGTH
