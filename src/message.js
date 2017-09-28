@@ -1,26 +1,30 @@
-import struct from './lowlevel/struct'
 import * as crypto from './crypto'
 import { createType, rawValue } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
-import std, { resolver } from './std'
-
-const { Signature } = std
 
 const DEFAULT_NETWORK_ID = 0
 const DEFAULT_PROTO_VER = 0
 
 function message ({
-  networkId = DEFAULT_NETWORK_ID,
-  protocolVersion = DEFAULT_PROTO_VER,
+  networkId,
+  protocolVersion,
   serviceId,
   messageId,
-  name = 'Message',
   body: BodyType
 }, resolver) {
-  // Allow to specify message body as a `struct` specification
-  BodyType = Array.isArray(BodyType)
-    ? struct(BodyType, resolver)
-    : resolver.resolve(BodyType)
+  const MessageHeader = resolver.resolve({
+    struct: [
+      { name: 'networkId', type: 'Uint8' },
+      { name: 'protocolVersion', type: 'Uint8' },
+      { name: 'messageId', type: 'Uint16' },
+      { name: 'serviceId', type: 'Uint16' },
+      { name: 'payloadLength', type: 'Uint32' }
+    ]
+  })
+  const headLength = MessageHeader.typeLength()
+
+  const Signature = resolver.resolve('Signature')
+  const sigLength = Signature.typeLength()
 
   // XXX: revert when meta for struct fields is implemented
   const authorField = undefined
@@ -45,7 +49,7 @@ function message ({
         protocolVersion,
         serviceId,
         messageId,
-        length: this.byteLength()
+        payloadLength: this.byteLength()
       })
     }
 
@@ -126,7 +130,7 @@ function message ({
     }
 
     toString () {
-      return `${name}:${this.body()}`
+      return `Message:${this.body()}`
     }
   }
 
@@ -134,19 +138,26 @@ function message ({
 }
 
 export default initFactory(message, {
-  name: 'message'
-  // TODO: typeTag
-})
+  name: 'message',
 
-const MessageHeader = resolver.resolve({
-  struct: [
-    { name: 'networkId', type: 'Uint8' },
-    { name: 'protocolVersion', type: 'Uint8' },
-    { name: 'messageId', type: 'Uint16' },
-    { name: 'serviceId', type: 'Uint16' },
-    { name: 'length', type: 'Uint32' }
-  ]
-})
+  prepare ({
+    networkId = DEFAULT_NETWORK_ID,
+    protocolVersion = DEFAULT_PROTO_VER,
+    serviceId,
+    messageId,
+    body
+  }, resolver) {
+    // Allow to specify message body as a `struct` specification
+    body = Array.isArray(body)
+      ? resolver.resolve({ struct: body })
+      : resolver.resolve(body)
 
-const headLength = MessageHeader.typeLength()
-const sigLength = Signature.typeLength()
+    return {
+      networkId,
+      protocolVersion,
+      serviceId,
+      messageId,
+      body
+    }
+  }
+})
