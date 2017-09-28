@@ -182,7 +182,7 @@ function union ({ marker, variants }, resolver) {
   variantNames.forEach(name => {
     Object.defineProperty(UnionType, name, {
       value: function (obj) {
-        return new UnionType({ [name]: obj })
+        return new this({ [name]: obj })
       }
     })
 

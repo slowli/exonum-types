@@ -99,7 +99,7 @@ function message ({
     }
 
     sign (privateKey) {
-      return new MessageType({
+      return new this.constructor({
         body: this.body(),
         signature: crypto.sign(this.serializeForSigning(), privateKey)
       })

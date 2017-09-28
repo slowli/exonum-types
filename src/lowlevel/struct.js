@@ -75,7 +75,7 @@ function struct (spec, resolver) {
           value = new Type(value)
         }
 
-        return StructType.from(rawValue(this).set(name, value))
+        return this.constructor.from(rawValue(this).set(name, value))
       } else {
         throw new Error(`Unknown property: ${name}`)
       }
