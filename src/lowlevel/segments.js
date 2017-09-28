@@ -22,6 +22,14 @@ function _byteLength (val, Type) {
     : typeLength
 }
 
+/**
+ * Calculates the total byte size needed to serialize `values`, where each value
+ * belongs to a corresponding type.
+ *
+ * @param {Array<ExonumType> | IndexedCollection<ExonumType>} values
+ * @param {Array<Class<ExonumType>> | IndexedCollection<Class<ExonumType>>} types
+ * @returns {number}
+ */
 export function byteLength (values, types) {
   return Seq(types)
     .zip(values)
@@ -43,7 +51,7 @@ export function heapStart (types) {
  *
  * @param {Uint8Array} buffer
  * @param {Array<ExonumType> | IndexedCollection<ExonumType>} values
- * @param {IndexedCollection<Class<ExonumType>>} types
+ * @param {Array<Class<ExonumType>> | IndexedCollection<Class<ExonumType>>} types
  * @param {number} [heapPos]
  *   the position of "heap" memory within the buffer. Can be calculated with `heapStart()`
  *   and cached beforehand
