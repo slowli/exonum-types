@@ -230,7 +230,7 @@ describe('Message', () => {
         body: {
           from: aliceKey.pub().toJSON(), // string
           to: bobKey.pub().toJSON(),
-          amount: 10000
+          amount: '10000'
         }
       })
     })
@@ -252,7 +252,7 @@ describe('Message', () => {
         body: {
           from: aliceKey.pub().toJSON(), // string
           to: bobKey.pub().toJSON(),
-          amount: 10000
+          amount: '10000'
         },
         signature: msg.signature().toJSON()
       })

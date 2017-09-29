@@ -7,6 +7,9 @@ const MAX_SAFE_INTEGER = bigInt(Number.MAX_SAFE_INTEGER || '9007199254740991')
 // istanbul ignore next: fallback code; hardly possible to trigger in modern envs
 const MIN_SAFE_INTEGER = bigInt(Number.MIN_SAFE_INTEGER || '-9007199254740991')
 
+// Maximum size of integer type in which all values fall into safe category
+const MAX_SAFE_SIZE = 6
+
 /**
  * Checks whether a value looks like an instance of an Exonum integer type.
  *
@@ -118,7 +121,7 @@ function $integer (byteLength, signed) {
 
     toJSON () {
       const raw = rawValue(this)
-      return (raw.gt(MAX_SAFE_INTEGER) || raw.lt(MIN_SAFE_INTEGER))
+      return (byteLength > MAX_SAFE_SIZE)
         ? raw.toString()
         : raw.toJSNumber()
     }

@@ -372,13 +372,13 @@ describe('Integer', () => {
 
   describe('toJSON', () => {
     const safeInts = [
-      1, -1, 1234567, -1234567, 9007199254740991, -9007199254740991,
-      '777', '-9876543210',
-      bigInt(8888888), bigInt(-9000000000)
+      1, -1, 1234567, -1234567,
+      '777', '-876543210',
+      bigInt(8888888), bigInt(-2000000000)
     ]
     safeInts.forEach(num => {
       it('should return a JS number for ' + num, () => {
-        const x = new integers.Int64(num)
+        const x = new integers.Int32(num)
         expect(x.toJSON()).to.equal(parseInt(num.toString()))
       })
     })

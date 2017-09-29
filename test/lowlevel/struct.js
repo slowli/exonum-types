@@ -145,7 +145,7 @@ describe('struct', () => {
       const json = {
         pubkey: 'f5864ab6a5a2190666b47c676bcf15a1f2f07703c5bcafb5749aa735ce8b7c36',
         name: 'Smart wallet',
-        balance: 359120,
+        balance: '359120',
         history_hash: '6752be882314f5bbbc9a6af2ae634fc07038584a4a77510ea5eced45f54dc030'
       }
       const wallet = new Wallet(json)
@@ -321,7 +321,7 @@ describe('struct', () => {
 
   describe('toJSON', () => {
     it('should work for simple struct type', () => {
-      const obj = { foo: 5, bar: -1000 }
+      const obj = { foo: 5, bar: '-1000' }
       const x = new Type(obj)
       expect(x.toJSON()).to.deep.equal(obj)
     })

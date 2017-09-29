@@ -219,7 +219,7 @@ describe('TypeResolver', () => {
 
     expect(Timespec.typeLength()).to.equal(12)
     expect(Timespec.from([ 1400000000, 90000000 ]).toJSON()).to.deep.equal({
-      seconds: 1400000000,
+      seconds: '1400000000',
       nanos: 90000000
     })
   })
@@ -246,7 +246,7 @@ describe('TypeResolver', () => {
     const json = {
       pubkey: 'f5864ab6a5a2190666b47c676bcf15a1f2f07703c5bcafb5749aa735ce8b7c36',
       name: 'Smart wallet',
-      balance: 359120,
+      balance: '359120',
       history_hash: '6752be882314f5bbbc9a6af2ae634fc07038584a4a77510ea5eced45f54dc030'
     }
     const wallet = Wallet.from(json)
@@ -473,7 +473,7 @@ describe('TypeResolver', () => {
     ])
 
     expect(wPoints.count()).to.equal(2)
-    expect(wPoints.get(0).toJSON()).to.deep.equal({ w: 25, obj: { x: 2, y: 3 } })
+    expect(wPoints.get(0).toJSON()).to.deep.equal({ w: '25', obj: { x: 2, y: 3 } })
     expect(wPoints.get(1).serialize()).to.equalBytes(
       '6400000000000000' + // w
       '64000000' + // obj.x
