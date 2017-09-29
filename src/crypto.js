@@ -1,10 +1,10 @@
 import sha from 'sha.js'
 import nacl from 'tweetnacl'
 
+import fixedBuffer from './lowlevel/fixedBuffer'
 import { isExonumObject, rawOrSelf } from './lowlevel/common'
-import std from './std'
 
-const { PublicKey } = std
+const PublicKey = fixedBuffer(32)
 
 export const hashLength = 32
 export const secretKeyLength = nacl.sign.secretKeyLength

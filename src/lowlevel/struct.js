@@ -1,4 +1,4 @@
-import { Record } from 'immutable'
+import { List, Record } from 'immutable'
 
 import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
@@ -34,27 +34,27 @@ import * as segments from './segments'
  *   console.log(otherPt.set('x', 2)) // { x: 5, y: 2 }, `Point` instance
  */
 function struct (spec, resolver) {
-  spec = validateAndResolveFields(spec, resolver)
-
   const propertyNames = spec.map(f => f.name)
+  const propertyTypes = List(spec.map(f => f.type))
+
   const recordSpec = {}
   propertyNames.forEach(name => { recordSpec[name] = undefined })
   // The backing `Record` class
   const Rec = Record(recordSpec)
 
   // The length of the fixed part of the structure
-  const fixedLength = segments.heapStart(spec.map(f => f.type))
+  const fixedLength = segments.heapStart(propertyTypes)
   // Is this structure fixed-length?
-  const hasFixedLength = spec.every(f => f.type.typeLength() !== undefined)
+  const hasFixedLength = propertyTypes.every(T => T.typeLength() !== undefined)
 
   class StructType extends createType({
     typeLength: hasFixedLength ? fixedLength : undefined,
     name: structName(spec)
   }) {
-    constructor (...args) {
+    constructor (objectOrArray) {
       // `null` signals to opt out of external raw value exposition, e.g.,
       // in the `get` method below
-      super(Rec(parseInitializer(spec, args, Rec)), null)
+      super(Rec(parseInitializer(spec, objectOrArray, Rec)), null)
     }
 
     /**
@@ -75,7 +75,7 @@ function struct (spec, resolver) {
           value = new Type(value)
         }
 
-        return StructType.from(rawValue(this).set(name, value))
+        return this.constructor.from(rawValue(this).set(name, value))
       } else {
         throw new Error(`Unknown property: ${name}`)
       }
@@ -107,10 +107,11 @@ function struct (spec, resolver) {
       return segments.byteLength(propertyNames.map(name => this.getOriginal(name)))
     }
 
-    _doSerialize (buffer) {
+    // XXX: `offset` here is a hack needed due to quirky message serialization
+    _doSerialize (buffer, { offset = 0 } = {}) {
       return segments.serialize(buffer,
         propertyNames.map(name => this.getOriginal(name)),
-        fixedLength)
+        { offset, heapPos: fixedLength })
     }
 
     toJSON () {
@@ -146,8 +147,17 @@ function struct (spec, resolver) {
 }
 
 export default initFactory(struct, {
-  name: 'struct'
-  // TODO: define `typeTag`
+  name: 'struct',
+
+  prepare (fields, resolver) {
+    return validateAndResolveFields(fields, resolver)
+  },
+
+  typeTag (fields, resolver) {
+    return List().withMutations(l => {
+      fields.map(({ name, type }) => l.push(name, type))
+    })
+  }
 })
 
 /**
@@ -156,34 +166,30 @@ export default initFactory(struct, {
  * @param {Array<FieldSpec>} spec
  * @param {any} args
  */
-function parseInitializer (spec, args, Rec) {
+function parseInitializer (spec, arg, Rec) {
   let parsed = {}
   let i
 
-  if (args.length === 1 && args[0] instanceof Rec) {
+  if (arg instanceof Rec) {
     // Shortcut if we have been a fitting `Record` object
-    return args[0]
-  } if (args.length === 1 && Array.isArray(args[0])) {
+    return arg
+  } if (Array.isArray(arg)) {
     // Assume `obj` is the sequence of properties
     // in the order of their declaration in the type
-    for (i = 0; i < args[0].length; i++) {
-      const T = spec[i].type
-      parsed[spec[i].name] = T.from(args[0][i])
-    }
-  } else if (args.length === 1 && typeof args[0] === 'object') {
     for (i = 0; i < spec.length; i++) {
-      const val = args[0][spec[i].name]
-      if (val !== undefined) {
-        const T = spec[i].type
-        parsed[spec[i].name] = T.from(val)
-      }
+      const T = spec[i].type
+      parsed[spec[i].name] = T.from(arg[i])
+      // This will throw automatically if there are not enough props,
+      // and `T.from` does not support instancing from `undefined`
+    }
+  } else if (arg && typeof arg === 'object') {
+    for (i = 0; i < spec.length; i++) {
+      const val = arg[spec[i].name]
+      const T = spec[i].type
+      parsed[spec[i].name] = T.from(val)
     }
   } else {
-    // Assume arguments are the properties
-    for (i = 0; i < args.length; i++) {
-      const T = spec[i].type
-      parsed[spec[i].name] = T.from(args[i])
-    }
+    throw new TypeError(`Cannot instantiate struct from ${arg}`)
   }
 
   return parsed
@@ -191,5 +197,5 @@ function parseInitializer (spec, args, Rec) {
 
 function structName (spec) {
   const fields = spec.map(field => field.type.toString()).join(', ')
-  return `(${fields})`
+  return `[${fields}]`
 }

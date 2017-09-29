@@ -46,7 +46,7 @@ describe('hash', () => {
   })
 
   it('should calculate hash correctly for complex type', () => {
-    const x = new SequenceType('deadbeef', 555)
+    const x = new SequenceType(['deadbeef', 555])
     // SHA256(0xdeadbeef2b020000)
     expect(hash(x)).to.equalBytes(
       '739b3099b5fb4f2d51d02404e3e4383be880e16e2c2f1656a97ca27971777003')
@@ -89,7 +89,7 @@ describe('sign', () => {
   })
 
   it('should sign an Exonum-typed object', () => {
-    const message = SequenceType.from('00000000', 1)
+    const message = SequenceType.from(['00000000', 1])
     const { secretKey: sk, publicKey: pk } = nacl.sign.keyPair()
     const signature = sign(message, sk)
 
@@ -101,7 +101,7 @@ describe('sign', () => {
 
 describe('verify', () => {
   const message = new Uint8Array(8)
-  const exMessage = SequenceType.from('00000000', 0)
+  const exMessage = SequenceType.from(['00000000', 0])
   const { secretKey: sk, publicKey: pk } = nacl.sign.keyPair()
   const signature = sign(message, sk)
 

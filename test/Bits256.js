@@ -4,7 +4,8 @@ import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
-import Bits256 from '../src/Bits256'
+import std from '../src/std'
+const Bits256 = std.Bits256
 
 const expect = chai
   .use(chaiBytes)
@@ -41,7 +42,7 @@ describe('Bits256', () => {
 
     nonBinaryStrings.forEach(str => {
       it(`should not accept non-binary string '${str}'`, () => {
-        expect(() => Bits256.from(str)).to.throw(/binary/i)
+        expect(() => Bits256.from(str)).to.throw(/Cannot parse.*bin.*encoding/i)
       })
     })
 
@@ -50,7 +51,7 @@ describe('Bits256', () => {
       for (let i = 0; i < 8; i++) str = str + str
       str += '0'
 
-      expect(() => Bits256.from(str)).to.throw(/long/i)
+      expect(() => Bits256.from(str)).to.throw(/Cannot parse.*bin.*encoding/i)
     })
 
     it('should initialize non-terminal bit string', () => {

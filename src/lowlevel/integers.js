@@ -66,6 +66,8 @@ function $integer (byteLength, signed) {
 
       if (isInteger(value)) {
         _raw = rawValue(value)
+      } else if (bigInt.isInstance(value)) {
+        _raw = value
       } else if (typeof value === 'string') {
         if (encoding === undefined) encoding = 'dec'
 
@@ -84,13 +86,9 @@ function $integer (byteLength, signed) {
           default:
             throw new Error(`Unknown encoding: ${encoding}`)
         }
-      } else {
+      } else if (typeof value === 'number' && !isNaN(value)) {
         _raw = bigInt(value)
-      }
-
-      // Check if `_raw` is indeed a big integer (may fail if supplied
-      //  witn `null`, `false`, `[]`, etc.)
-      if (!('value' in _raw)) {
+      } else {
         throw new TypeError(`Not a number: ${value}`)
       }
 

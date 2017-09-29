@@ -38,7 +38,7 @@ describe('array', () => {
 
   describe('constructor', () => {
     it('should create an empty array', () => {
-      const x = new StrArray()
+      const x = new StrArray([])
       expect(x.count()).to.equal(0)
     })
 
@@ -63,6 +63,9 @@ describe('array', () => {
     const invalidInitializers = [
       ['string', 'foo'],
       ['boolean', true],
+      ['number', 12],
+      ['null', null],
+      ['undefined', undefined],
       ['uint8array', new Uint8Array(10)],
       ['object', { 1: 'bar' }],
       ['function', () => {}]
@@ -131,6 +134,26 @@ describe('array', () => {
       const lst = x.toOriginalList()
       expect(lst.count()).to.equal(2)
       expect(lst).to.satisfy(l => l.every(isExonumObject))
+    })
+  })
+
+  describe('static equals', () => {
+    it('should assert array equality correctly', () => {
+      expect(StrArray.equals(StrArray)).to.be.true()
+      expect(StrArray.equals(BoolArray)).to.be.false()
+
+      const OtherStrArray = std.resolve({ array: 'Str' })
+      expect(StrArray.equals(OtherStrArray)).to.be.true()
+
+      const OtherStructArray = std.resolve({
+        array: {
+          struct: [
+            { name: 'x', type: 'Uint32' },
+            { name: 'y', type: { uinteger: 4 } }
+          ]
+        }
+      })
+      expect(OtherStructArray.equals(StructArray)).to.be.true()
     })
   })
 })

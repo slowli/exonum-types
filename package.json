@@ -12,7 +12,7 @@
     "report-cover": "nyc report",
     "report-to-coveralls": "nyc report --reporter=text-lcov | coveralls",
     "lint": "eslint --ignore-path .gitignore .",
-    "compile": "babel src/ -d lib/ && cpy \"**/*.json\" ../lib/ --cwd=src --parents",
+    "compile": "rimraf lib && babel src/ -d lib/ && cpy \"**/*.json\" ../lib/ --cwd=src --parents",
     "prepare": "npm run compile"
   },
   "author": "Exonum Team <exonum@bitury.com>",
@@ -42,7 +42,8 @@
     "eslint-plugin-promise": "^3.5.0",
     "eslint-plugin-standard": "^3.0.1",
     "mocha": "^3.5.3",
-    "nyc": "^11.2.1"
+    "nyc": "^11.2.1",
+    "rimraf": "^2.6.2"
   },
   "nyc": {
     "require": [

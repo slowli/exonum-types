@@ -7,6 +7,7 @@ import bigInt from 'big-integer'
 
 import { integer, uinteger } from '../../src/lowlevel/integers'
 import { rawValue } from '../../src/lowlevel/common'
+import std from '../../src/std'
 
 const integers = {
   Int8: integer(1),
@@ -242,7 +243,7 @@ for (let typeName in typeDefs) {
 
     describe('serialize', () => {
       it('should serialize as Uint8Array', () => {
-        const s = new Type().serialize()
+        const s = new Type(0).serialize()
         expect(s).to.be.a('uint8array')
       })
 
@@ -393,6 +394,17 @@ describe('Integer', () => {
         const x = new integers.Int64(num)
         expect(x.toJSON()).to.equal(num.toString())
       })
+    })
+  })
+
+  describe('static equals', () => {
+    it('should compare integer types correctly', () => {
+      expect(integer(4).equals(integer(4))).to.be.true()
+      expect(uinteger(4).equals(uinteger(4))).to.be.true()
+      expect(integer(4).equals(uinteger(4))).to.be.false()
+
+      expect(integer(4).equals(std.Int32)).to.be.true()
+      expect(std.Uint8.equals(uinteger(1))).to.be.true()
     })
   })
 })

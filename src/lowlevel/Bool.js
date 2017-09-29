@@ -13,8 +13,12 @@ export default class Bool extends createType({
   name: 'Bool'
 }) {
   constructor (val) {
-    const raw = isBoolean(val) ? rawValue(val) : !!val
-    super(raw)
+    if (isBoolean(val)) val = rawValue(val)
+
+    if (typeof val !== 'boolean') {
+      throw new TypeError(`Cannot construct Bool from ${val}`)
+    }
+    super(val)
   }
 
   _doSerialize (buffer) {

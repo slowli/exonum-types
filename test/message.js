@@ -5,9 +5,7 @@ import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
 import * as crypto from '../src/crypto'
-import { resolver } from '../src/std'
-import message from '../src/message'
-import types from '../src/blockchain'
+import types from '../src/std'
 
 import blockData from './data/block.json'
 
@@ -18,11 +16,8 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
-const _resolver = resolver.addFactory('message', message)
-const createType = _resolver.resolve.bind(_resolver)
-
 describe('Message', () => {
-  const TxTransfer = createType({
+  const TxTransfer = types.resolve({
     message: {
       serviceId: 1,
       messageId: 128,
@@ -34,15 +29,26 @@ describe('Message', () => {
     }
   })
 
+  const TxCreate = types.resolve({
+    message: {
+      serviceId: 1,
+      messageId: 129,
+      body: [
+        { name: 'from', type: 'PublicKey', author: true },
+        { name: 'name', type: 'Str' }
+      ]
+    }
+  })
+
   // XXX: remove when meta for struct fields is implemented
   TxTransfer.prototype.author = function () {
     return this.body().from
   }
 
-  const ComplexMessage = createType({
+  const ComplexMessage = types.resolve({
     message: {
       serviceId: 1,
-      messageId: 129,
+      messageId: 130,
       body: [
         { name: 'from', type: 'PublicKey', author: true },
         { name: 'foo', type: 'Str' },
@@ -70,6 +76,22 @@ describe('Message', () => {
           to: bobKey.pub(),
           amount: 10000
         }
+      })
+      const body = msg.body()
+
+      expect(body).to.have.property('from')
+      expect(body.from).to.equalBytes(aliceKey.rawPub())
+      expect(body).to.have.property('to')
+      expect(body.to).to.equalBytes(bobKey.rawPub())
+      expect(body).to.have.property('amount')
+      expect(body.amount).to.equal(10000)
+    })
+
+    it('should construct a message using fromBody() method', () => {
+      const msg = TxTransfer.fromBody({
+        from: aliceKey.pub(),
+        to: bobKey.pub(),
+        amount: 10000
       })
       const body = msg.body()
 
@@ -147,7 +169,7 @@ describe('Message', () => {
         '0000' + // networkId + protocolVersion
         '8000' + // messageId
         '0100' + // serviceId
-        '92000000' // messagee length
+        '92000000' // message length
       )
 
       expect(serialized.subarray(10, 10 + 32)).to.equalBytes(aliceKey.rawPub())
@@ -156,6 +178,37 @@ describe('Message', () => {
       expect(serialized.subarray(10 + 64, 10 + 72)).to.equalBytes('1027000000000000')
 
       expect(serialized.subarray(10 + 72)).to.equalBytes(msg.signature().serialize())
+    })
+
+    it('should implement quirky serialization of segments in message', () => {
+      const msg = TxCreate.from({
+        body: {
+          from: aliceKey.pub(),
+          name: 'Alice'
+        }
+      }).sign(aliceKey)
+
+      const serialized = msg.serialize()
+
+      // verify message header
+      expect(serialized.subarray(0, 10)).to.equalBytes(
+        '0000' + // networkId + protocolVersion
+        '8100' + // messageId
+        '0100' + // serviceId
+        '77000000' // message length (10 + 45 + 64 = 119 = 0x77)
+      )
+
+      expect(serialized.subarray(10, 10 + 32)).to.equalBytes(aliceKey.rawPub())
+
+      // The segment should be counter from the start of the *entire* message
+      expect(serialized.subarray(10 + 32, 10 + 40)).to.equalBytes(
+        '32000000' + // offset (50)
+        '05000000' // length (5)
+      )
+      // The 'Alice' string
+      expect(serialized.subarray(10 + 40, 10 + 45)).to.equalBytes('416c696365')
+
+      expect(serialized.subarray(10 + 45)).to.equalBytes(msg.signature().serialize())
     })
   })
 
@@ -218,7 +271,7 @@ describe('Message', () => {
         networkId: 0,
         protocolVersion: 0,
         serviceId: 1,
-        messageId: 129,
+        messageId: 130,
         body: {
           from: aliceKey.pub().toJSON(), // string
           foo: 'Hello',
@@ -289,7 +342,7 @@ describe('Message', () => {
 
   describe('toString', () => {
     it('should return descriptive content for the message', () => {
-      const Msg = createType({
+      const Msg = types.resolve({
         message: {
           serviceId: 1,
           messageId: 0,

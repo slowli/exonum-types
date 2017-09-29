@@ -4,9 +4,8 @@ import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
-import listView from '../src/listView'
 import { convertListJSON } from '../src/jsonConverters'
-import std from '../src/std'
+import types from '../src/std'
 
 import samples from './data/listView.json'
 
@@ -15,6 +14,8 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
+const listView = types.listView
+
 describe('listView', () => {
   function testValidSample (sampleName) {
     describe(`on sample ${sampleName}`, () => {
@@ -22,7 +23,7 @@ describe('listView', () => {
       const expected = sample.expected
       const json = convertListJSON(sample.data)
       const elementLength = expected.elementLength || expected.elements[0].length
-      const ListView = listView({ fixedBuffer: elementLength }, std.resolver)
+      const ListView = listView({ fixedBuffer: elementLength })
       let lst
 
       it(`should parse valid list view from sample`, () => {
@@ -53,7 +54,7 @@ describe('listView', () => {
       const elementLength = sample.expected.elementLength
       const json = convertListJSON(sample.data)
 
-      const ListView = listView({ fixedBuffer: elementLength }, std.resolver)
+      const ListView = listView({ fixedBuffer: elementLength })
 
       expect(() => new ListView(json)).to.throw(expectedError)
     })

@@ -1,6 +1,7 @@
 /* eslint-env mocha */
 
 import bigInt from 'big-integer'
+import { List } from 'immutable'
 import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
@@ -38,17 +39,24 @@ describe('struct', () => {
     { name: 'history_hash', type: std.Hash }
   ])
 
+  const StructWithOption = std.resolve({
+    struct: [
+      { name: 'foo', type: std.Uint32 },
+      { name: 'bar', type: std.option(std.Int64) }
+    ]
+  })
+
   describe('inspect', () => {
     it('should describe simple struct', () => {
-      expect(Type.inspect()).to.equal('(Uint32, Int64)')
+      expect(Type.inspect()).to.equal('[Uint32, Int64]')
     })
 
     it('should describe simple struct', () => {
-      expect(Wallet.inspect()).to.equal('(Buffer<32>, Str, Uint64, Buffer<32>)')
+      expect(Wallet.inspect()).to.equal('[Buffer<32>, Str, Uint64, Buffer<32>]')
     })
 
     it('should describe complex struct', () => {
-      expect(ComplexType.inspect()).to.equal('(Int16, (Str, Uint8), Str)')
+      expect(ComplexType.inspect()).to.equal('[Int16, [Str, Uint8], Str]')
     })
   })
 
@@ -63,14 +71,6 @@ describe('struct', () => {
       expect(VarType.typeLength()).to.be.undefined()
     })
 
-    it('should instantiate from arguments', () => {
-      const x = new Type(12, -344666)
-      expect(x).to.have.property('foo')
-      expect(x).to.have.property('bar')
-      expect(x.foo).to.equal(12)
-      expect(x.bar).to.equal(-344666)
-    })
-
     it('should instantiate from an object', () => {
       const x = new Type({
         foo: 12,
@@ -83,7 +83,7 @@ describe('struct', () => {
     })
 
     it('should instantiate from an array', () => {
-      const x = new Type([ 12, -30000 ])
+      const x = new Type([12, -30000])
       expect(x).to.have.property('foo')
       expect(x).to.have.property('bar')
       expect(x.foo).to.equal(12)
@@ -96,10 +96,10 @@ describe('struct', () => {
         { name: 'simple', type: std.Int64 }
       ])
 
-      const x = new ComplexType(
-        new Type(1, -2),
+      const x = new ComplexType([
+        new Type([1, -2]),
         new std.Int64(25)
-      )
+      ])
       expect(x).to.have.property('complex')
       expect(x).to.have.property('simple')
       expect(x.complex).to.have.property('foo')
@@ -127,22 +127,18 @@ describe('struct', () => {
       expect(x.simple).to.equal(25)
     })
 
-    it('should support partial assignement through arguments', () => {
-      const x = new Type(11)
-      expect(x.foo).to.equal(11)
-      expect(x.bar).to.be.undefined()
-    })
-
     it('should support partial assignement through object', () => {
-      const x = new Type({ bar: 11 })
-      expect(x.bar).to.equal(11)
-      expect(x.foo).to.be.undefined()
+      // As option types support `undefined` initialization, they can be omitted when
+      // used as fields in structs
+      const x = new StructWithOption({ foo: 11 })
+      expect(x.foo).to.equal(11)
+      expect(x.bar.type).to.equal('none')
     })
 
     it('should support partial assignement through array', () => {
-      const x = new Type([ 11 ])
+      const x = new StructWithOption([ 11 ])
       expect(x.foo).to.equal(11)
-      expect(x.bar).to.be.undefined()
+      expect(x.bar.type).to.equal('none')
     })
 
     it('should parse wallet from JSON', () => {
@@ -164,13 +160,13 @@ describe('struct', () => {
 
   describe('get', () => {
     it('should return values of defined properties', () => {
-      const x = new Type(1, -2)
+      const x = new Type([1, -2])
       expect(x.get('foo')).to.equal(1)
       expect(x.get('bar')).to.equal(-2)
     })
 
     it('should return undefined for undefined properties', () => {
-      const x = new Type(1, -2)
+      const x = new Type([1, -2])
       expect(x.get('bazz')).to.be.undefined()
       expect(x.get('get')).to.be.undefined()
       expect(x.get('set')).to.be.undefined()
@@ -180,7 +176,7 @@ describe('struct', () => {
 
   describe('getOriginal', () => {
     it('should return an Exonum-typed object', () => {
-      const x = new Type(1, -2)
+      const x = new Type([1, -2])
       expect(x.getOriginal('foo')).to.satisfy(isExonumObject)
       expect(x.getOriginal('bar')).to.satisfy(isExonumObject)
       expect(+x.getOriginal('foo')).to.equal(1)
@@ -189,7 +185,7 @@ describe('struct', () => {
 
   describe('set', () => {
     it('should set defined properties', () => {
-      let x = new Type(1, -2)
+      let x = new Type([1, -2])
       x = x.set('foo', 5)
       expect(x.foo).to.equal(5)
       x = x.set('foo', '256765')
@@ -197,14 +193,14 @@ describe('struct', () => {
     })
 
     it('should throw for undefined properties', () => {
-      const x = new Type(1, -2)
+      const x = new Type([1, -2])
       expect(() => x.set('bazz', 5)).to.throw(Error, /property/i)
       expect(() => x.set('get', 5)).to.throw(Error, /property/i)
       expect(() => x.set('set', 5)).to.throw(Error, /property/i)
     })
 
     it('should support property writes with various coercible types', () => {
-      let x = new Type(12, -344666)
+      let x = new Type([12, -344666])
       x = x.set('foo', 23)
       expect(x.foo).to.equal(23)
       x = x.set('foo', '42')
@@ -216,7 +212,7 @@ describe('struct', () => {
     })
 
     it('should throw for out-of-range assignments of integer properties', () => {
-      let x = new Type(12, -344666)
+      let x = new Type([12, -344666])
       expect(() => { x.set('foo', 5000000000) }).to.throw()
       expect(() => { x.set('foo', x.foo - 13) }).to.throw()
       expect(() => { x.set('foo', x.foo * x.bar) }).to.throw()
@@ -225,7 +221,7 @@ describe('struct', () => {
 
   describe('byteLength', () => {
     it('should count segments in var-length types', () => {
-      const x = new VarType('ABC', 55)
+      const x = new VarType(['ABC', 55])
       expect(x.byteLength()).to.equal(8 + 1 + 3)
     })
 
@@ -244,12 +240,12 @@ describe('struct', () => {
 
   describe('serialize', () => {
     it('should serialize a fixed-length type', () => {
-      const x = new Type(1, -2)
+      const x = new Type([1, -2])
       expect(x.serialize()).to.equalBytes([1, 0, 0, 0, 254, 255, 255, 255, 255, 255, 255, 255])
     })
 
     it('should serialize a var-length type', () => {
-      const x = new VarType('ABC', 55)
+      const x = new VarType(['ABC', 55])
       expect(x.serialize()).to.equalBytes([
         9, 0, 0, 0, // segment start
         3, 0, 0, 0, // segment length
@@ -293,7 +289,7 @@ describe('struct', () => {
         { name: 'bar', type: std.Str }
       ])
 
-      const x = new Type('ABC', '----')
+      const x = new Type(['ABC', '----'])
       expect(x.serialize()).to.equalBytes([
         16, 0, 0, 0, // segment for x.foo
         3, 0, 0, 0,
@@ -321,11 +317,6 @@ describe('struct', () => {
         97, 108, 108, 101, 116
       ])
     })
-
-    it('should throw when there are uninitialized properties', () => {
-      const x = new Type(1)
-      expect(() => x.serialize()).to.throw()
-    })
   })
 
   describe('toJSON', () => {
@@ -348,32 +339,12 @@ describe('struct', () => {
       const x = new ComplexType(obj)
       expect(x.toJSON()).to.deep.equal(obj)
     })
-
-    it('should return uninitialized properties as undefined', () => {
-      const x = new ComplexType({
-        a: 10,
-        b: { str: 'foo' }
-      })
-
-      expect(x.toJSON()).to.deep.equal({
-        a: 10,
-        b: { str: 'foo', foo: undefined },
-        c: undefined
-      })
-    })
   })
 
   describe('toString', () => {
     it('should yield expected result for simple struct', () => {
       const x = new Type({ foo: 5, bar: -1000 })
       expect(x.toString()).to.equal('{ foo: 5, bar: -1000 }')
-    })
-
-    it('should represent undefined fields with `?`', () => {
-      let x = new Type({ foo: 5 })
-      expect(x.toString()).to.equal('{ foo: 5, ?bar }')
-      x = new Type({ bar: -5 })
-      expect(x.toString()).to.equal('{ ?foo, bar: -5 }')
     })
 
     it('should yield expected result for complex struct', () => {
@@ -386,6 +357,74 @@ describe('struct', () => {
         c: 'f00'
       })
       expect(x.toString()).to.equal('{ a: -10, b: { str: cabbage, foo: 16 }, c: f00 }')
+    })
+  })
+
+  describe('typeTag', () => {
+    it('should be defined', () => {
+      expect(Type.typeTag).to.be.a('function')
+    })
+
+    it('should yield a list', () => {
+      const lst = List.of('struct',
+        List.of('foo', std.Uint32, 'bar', std.Int64))
+      expect(lst.equals(Type.typeTag())).to.be.true()
+    })
+  })
+
+  describe('static hashCode', () => {
+    it('should proxy typeTag hashCode', () => {
+      expect(Type.hashCode()).to.equal(Type.typeTag().hashCode())
+    })
+  })
+
+  describe('static equals', () => {
+    it('should structurually determine type equality', () => {
+      expect(Type.equals(Type)).to.be.true()
+      expect(Type.equals(ComplexType)).to.be.false()
+      expect(ComplexType.equals(Type)).to.be.false()
+
+      let OtherType = struct([
+        { name: 'foo', type: std.Uint32 },
+        { name: 'bar', type: std.Int64 }
+      ])
+
+      expect(Type.equals(OtherType)).to.be.true()
+      expect(OtherType.equals(Type)).to.be.true()
+      expect(ComplexType.equals(OtherType)).to.be.false()
+      expect(OtherType.equals(ComplexType)).to.be.false()
+
+      OtherType = std.resolve({
+        struct: [
+          { name: 'foo', type: 'Uint32' },
+          { name: 'bar', type: 'Int64' }
+        ]
+      })
+
+      expect(Type.equals(OtherType)).to.be.true()
+      expect(OtherType.equals(Type)).to.be.true()
+      expect(ComplexType.equals(OtherType)).to.be.false()
+      expect(OtherType.equals(ComplexType)).to.be.false()
+    })
+
+    it('should structurually determine type equality in complex case', () => {
+      const OtherType = std.resolve({
+        struct: [
+          { name: 'a', type: 'Int16' },
+          {
+            name: 'b',
+            type: {
+              struct: [
+                { name: 'str', type: 'Str' },
+                { name: 'foo', type: 'Uint8' }
+              ]
+            }
+          },
+          { name: 'c', type: 'Str' }
+        ]
+      })
+
+      expect(OtherType.equals(ComplexType)).to.be.true()
     })
   })
 })

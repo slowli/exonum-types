@@ -1,3 +1,5 @@
+import { List } from 'immutable'
+
 const EXONUM_KIND_PROP = typeof Symbol !== 'undefined'
   ? Symbol.for('exonum.kind')
   : '__exonumKind'
@@ -40,20 +42,6 @@ export function isExonumType (maybeExonumType) {
  */
 export function isExonumObject (maybeExonumObj) {
   return getKind(maybeExonumObj) === 'object'
-}
-
-const EXONUM_TYPEREF_PROP = typeof Symbol !== 'undefined'
-  ? Symbol.for('exonum.typeref')
-  : '__exonumTyperef'
-
-/**
- * Retrieves the Exonum type corresponding to this Exonum object.
- *
- * @param {ExonumType} exonumObj
- */
-export function getType (exonumObj) {
-  if (!isExonumObject(exonumObj)) return undefined
-  return exonumObj[EXONUM_TYPEREF_PROP]
 }
 
 const EXONUM_RAW_PROP = typeof Symbol !== 'undefined'
@@ -133,14 +121,6 @@ export function memoize (fn) {
 /**
  * Initializes an Exonum type by attaching some sensible default method implementations.
  *
- * @param {Class<ExonumBase>} Type
- *   The base class to build the Exonum type upon. Should implement the following methods:
- *
- *   - `serialize(buffer: Uint8Array): void`
- *   - `toJSON(): any`
- *
- *   If the type has variable serialization length, `byteLength(): number` method should
- *   be defined as well.
  * @param {Object} options
  * @param {?string} options.name
  *   Type name; used to get string representation of the class
@@ -152,13 +132,14 @@ export function memoize (fn) {
  */
 export function createType ({
   name = '[Exonum type]',
+  typeTag = List.of(name),
   typeLength = undefined,
   proxiedMethods = [],
   kind = 'type'
 }) {
   class ExonumType {
     static inspect () {
-      return name
+      return this.toString()
     }
 
     static toString () {
@@ -167,6 +148,19 @@ export function createType ({
 
     static typeLength () {
       return typeLength
+    }
+
+    static typeTag () {
+      return typeTag
+    }
+
+    static hashCode () {
+      return this.typeTag().hashCode()
+    }
+
+    static equals (other) {
+      if (!isExonumType(other)) return false
+      return this.typeTag().equals(other.typeTag())
     }
 
     static from (maybeInstance) {
@@ -203,7 +197,6 @@ export function createType ({
 
   Object.defineProperty(ExonumType, EXONUM_KIND_PROP, { value: kind })
   Object.defineProperty(ExonumType.prototype, EXONUM_KIND_PROP, { value: 'object' })
-  Object.defineProperty(ExonumType.prototype, EXONUM_TYPEREF_PROP, { value: ExonumType })
 
   // XXX: Is it possible to get rid of `proxiedMethods` and perform movement of methods
   // individually in each case?

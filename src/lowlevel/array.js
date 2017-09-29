@@ -27,18 +27,13 @@ const SizeType = uinteger(4)
  *   arr.byteLength() // = 4 (length) + 3*8 (segment pointers) + 11 (strings)
  */
 function array (ElementType, resolver) {
-  ElementType = resolver.resolve(ElementType)
-
   class ExonumArray extends createType({
     name: `Array<${ElementType.inspect()}>`,
     typeLength: undefined
   }) {
     constructor (arr) {
       let elements
-      if (!arr) {
-        // Initialize an empty array
-        elements = []
-      } else if (Array.isArray(arr)) {
+      if (Array.isArray(arr)) {
         elements = arr.map(x => ElementType.from(x))
       } else {
         throw new TypeError('Invalid array initializer, JS array expected')
@@ -113,5 +108,9 @@ function array (ElementType, resolver) {
 }
 
 export default initFactory(array, {
-  name: 'array'
+  name: 'array',
+
+  prepare (Type, resolver) {
+    return resolver.resolve(Type)
+  }
 })

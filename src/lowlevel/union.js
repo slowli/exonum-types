@@ -1,10 +1,12 @@
+import { List } from 'immutable'
+
 import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
 import { validateAndResolveFields } from './TypeResolver'
 
 const DEFAULT_MARKER = 'type'
 
-export function parseUnion (obj, marker, variantNames) {
+function parseUnion (obj, marker, variantNames) {
   let variantName, variant
 
   if (obj[marker]) {
@@ -53,16 +55,7 @@ export function parseUnion (obj, marker, variantNames) {
  *   console.log(x.str) // undefined
  *   console.log(x.toJSON()) // { int: 5 }
  */
-function union (spec, resolver) {
-  let marker, variants
-  if (!Array.isArray(spec)) {
-    ({ marker, variants } = spec)
-  } else {
-    marker = DEFAULT_MARKER
-    variants = spec
-  }
-
-  variants = validateAndResolveFields(variants, resolver)
+function union ({ marker, variants }, resolver) {
   const variantNames = variants.map(f => f.name)
   const markerByteLength = 1
 
@@ -189,7 +182,7 @@ function union (spec, resolver) {
   variantNames.forEach(name => {
     Object.defineProperty(UnionType, name, {
       value: function (obj) {
-        return new UnionType({ [name]: obj })
+        return new this({ [name]: obj })
       }
     })
 
@@ -214,13 +207,31 @@ function union (spec, resolver) {
 }
 
 export default initFactory(union, {
-  name: 'union'
-  // TODO: typeTag
+  name: 'union',
+
+  prepare (spec, resolver) {
+    let marker, variants
+    if (!Array.isArray(spec)) {
+      ({ marker, variants } = spec)
+    } else {
+      marker = DEFAULT_MARKER
+      variants = spec
+    }
+
+    variants = validateAndResolveFields(variants, resolver)
+    return { marker, variants }
+  },
+
+  typeTag ({ variants }) {
+    return List().withMutations(l => {
+      variants.map(({ name, type }) => l.push(name, type))
+    })
+  }
 })
 
 function unionName (variants) {
   const varDescription = variants
-    .map(variant => `${variant.name}:${variant.type}`)
+    .map(variant => variant.type.inspect())
     .join(' | ')
   return `(${varDescription})`
 }
