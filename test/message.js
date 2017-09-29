@@ -87,6 +87,22 @@ describe('Message', () => {
       expect(body.amount).to.equal(10000)
     })
 
+    it('should construct a message using fromBody() method', () => {
+      const msg = TxTransfer.fromBody({
+        from: aliceKey.pub(),
+        to: bobKey.pub(),
+        amount: 10000
+      })
+      const body = msg.body()
+
+      expect(body).to.have.property('from')
+      expect(body.from).to.equalBytes(aliceKey.rawPub())
+      expect(body).to.have.property('to')
+      expect(body.to).to.equalBytes(bobKey.rawPub())
+      expect(body).to.have.property('amount')
+      expect(body.amount).to.equal(10000)
+    })
+
     it('should construct a complex message', () => {
       const msg = new ComplexMessage({
         body: {

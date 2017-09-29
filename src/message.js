@@ -35,6 +35,13 @@ function message ({
       ? undefined
       : (headLength + BodyType.typeLength() + sigLength)
   }) {
+    /**
+     * Creates a new unsigned message with the specified body content.
+     */
+    static fromBody (body) {
+      return new this({ body })
+    }
+
     constructor ({ body, signature }) {
       signature = signature ? Signature.from(signature) : undefined
       super({
