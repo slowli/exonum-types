@@ -1,8 +1,14 @@
 import { List } from 'immutable'
 
+// Where to store Exonum kind marker for factories, types, and instances of types (objects)
 const EXONUM_KIND_PROP = typeof Symbol !== 'undefined'
   ? Symbol.for('exonum.kind')
   : '__exonumKind'
+
+// Where to store "primitive" value information
+const EXONUM_RAW_PROP = typeof Symbol !== 'undefined'
+  ? Symbol.for('exonum.raw')
+  : '__exonumRaw'
 
 export function getKind (obj) {
   return !obj ? undefined : obj[EXONUM_KIND_PROP]
@@ -43,10 +49,6 @@ export function isExonumType (maybeExonumType) {
 export function isExonumObject (maybeExonumObj) {
   return getKind(maybeExonumObj) === 'object'
 }
-
-const EXONUM_RAW_PROP = typeof Symbol !== 'undefined'
-  ? Symbol.for('exonum.raw')
-  : '__exonumRaw'
 
 /**
  * Sets the "raw" value of an Exonum type instance. The raw value may be used
@@ -102,21 +104,23 @@ export function rawOrSelf (obj, externalUse = false) {
 }
 
 // For zero-arity functions only!
-let memoizeCounter = 0
+export const memoize = (() => {
+  let memoizeCounter = 0
 
-export function memoize (fn) {
-  memoizeCounter += 1
-  let slotName = memoizeCounter
+  return function (fn) {
+    memoizeCounter += 1
+    let slotName = memoizeCounter
 
-  return function () {
-    if (!this.__memoize) this.__memoize = {}
-    if (!this.__memoize[slotName]) {
-      this.__memoize[slotName] = fn.call(this)
+    return function () {
+      if (!this.__memoize) this.__memoize = {}
+      if (!this.__memoize[slotName]) {
+        this.__memoize[slotName] = fn.call(this)
+      }
+
+      return this.__memoize[slotName]
     }
-
-    return this.__memoize[slotName]
   }
-}
+})()
 
 /**
  * Initializes an Exonum type by attaching some sensible default method implementations.
@@ -200,14 +204,12 @@ export function createType ({
 
   // XXX: Is it possible to get rid of `proxiedMethods` and perform movement of methods
   // individually in each case?
-  if (proxiedMethods) {
-    proxiedMethods.forEach(name => {
-      ExonumType.prototype[name] = function () {
-        const raw = rawValue(this)
-        return raw[name].apply(raw, arguments)
-      }
-    })
-  }
+  proxiedMethods.forEach(name => {
+    ExonumType.prototype[name] = function () {
+      const raw = rawValue(this)
+      return raw[name].apply(raw, arguments)
+    }
+  })
 
   return ExonumType
 }
