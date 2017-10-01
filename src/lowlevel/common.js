@@ -158,6 +158,17 @@ export function createType ({
       return typeTag
     }
 
+    /**
+     * Returns information about the type. Subtypes may override. For classes created
+     * with factories, appropriate meta could be set via `argumentMeta` parameter
+     * supplied to `initFactory()`.
+     *
+     * @returns {?Object}
+     */
+    static meta () {
+      return {}
+    }
+
     static hashCode () {
       return this.typeTag().hashCode()
     }
