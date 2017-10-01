@@ -42,6 +42,41 @@ describe('mapView', () => {
     })
   })
 
+  it('should fail on incorrect key ordering', () => {
+    const StrMapView = mapView('Str')
+    const json = {
+      branch: {
+        leftKey: '11',
+        rightKey: '101',
+        left: { hash: '0000000000000000000000000000000000000000000000000000000000000000' },
+        right: { hash: '0000000000000000000000000000000000000000000000000000000000000001' }
+      }
+    }
+
+    expect(() => StrMapView.from(json)).to.throw(/incorrect key ordering/i)
+  })
+
+  it('should fail on incorrect key ordering at non-root branch', () => {
+    const StrMapView = mapView('Str')
+    const json = {
+      branch: {
+        leftKey: '0',
+        rightKey: '1',
+        left: {
+          branch: {
+            leftKey: '01',
+            rightKey: '00',
+            left: { hash: '0000000000000000000000000000000000000000000000000000000000000000' },
+            right: { hash: '0000000000000000000000000000000000000000000000000000000000000001' }
+          }
+        },
+        right: { hash: '0000000000000000000000000000000000000000000000000000000000000002' }
+      }
+    }
+
+    expect(() => StrMapView.from(json)).to.throw(/incorrect key ordering/i)
+  })
+
   function testValidSample (sampleName) {
     describe(`on sample ${sampleName}`, () => {
       const sample = samples[sampleName]
@@ -112,10 +147,29 @@ describe('mapView', () => {
     })
   }
 
+  function testInvalidSample (sampleName, expectedError) {
+    it(`should fail on sample ${sampleName}`, () => {
+      const sample = samples[sampleName]
+      const elementLength = sample.expected.elementLength
+      const json = convertMapJSON(sample.data)
+
+      const MapView = mapView({ fixedBuffer: elementLength })
+
+      expect(() => new MapView(json)).to.throw(expectedError)
+    })
+  }
+
   testValidSample('valid-no-values')
   testValidSample('valid-8')
   testValidSample('valid-special-root')
   testValidSample('valid-special-root-no-values')
   testValidSample('valid-single-value')
+  testValidSample('valid-single-hash')
   testValidSample('valid-empty')
+
+  testInvalidSample('invalid-single-non-term', /non-terminal key at an isolated node/)
+  testInvalidSample('invalid-single-hash-non-term', /non-terminal key at an isolated node/)
+  testInvalidSample('invalid-8-non-term', /non-terminal key at value/)
+  testInvalidSample('invalid-8-oversized-key', /bit slice.*too long/)
+  testInvalidSample('invalid-special-root', 'one of the keys at the root is a substring of the other key')
 })
