@@ -6,6 +6,7 @@ import dirtyChai from 'dirty-chai'
 
 import * as crypto from '../src/crypto'
 import types from '../src/std'
+import { isExonumType } from '../src/lowlevel/common'
 
 import blockData from './data/block.json'
 
@@ -42,7 +43,7 @@ describe('Message', () => {
 
   // XXX: remove when meta for struct fields is implemented
   TxTransfer.prototype.author = function () {
-    return this.body().from
+    return this.body.from
   }
 
   const ComplexMessage = types.resolve({
@@ -77,14 +78,13 @@ describe('Message', () => {
           amount: 10000
         }
       })
-      const body = msg.body()
 
-      expect(body).to.have.property('from')
-      expect(body.from).to.equalBytes(aliceKey.rawPub())
-      expect(body).to.have.property('to')
-      expect(body.to).to.equalBytes(bobKey.rawPub())
-      expect(body).to.have.property('amount')
-      expect(body.amount).to.equal(10000)
+      expect(msg.body).to.have.property('from')
+      expect(msg.body.from).to.equalBytes(aliceKey.rawPub())
+      expect(msg.body).to.have.property('to')
+      expect(msg.body.to).to.equalBytes(bobKey.rawPub())
+      expect(msg.body).to.have.property('amount')
+      expect(msg.body.amount).to.equal(10000)
     })
 
     it('should construct a message using fromBody() method', () => {
@@ -93,14 +93,13 @@ describe('Message', () => {
         to: bobKey.pub(),
         amount: 10000
       })
-      const body = msg.body()
 
-      expect(body).to.have.property('from')
-      expect(body.from).to.equalBytes(aliceKey.rawPub())
-      expect(body).to.have.property('to')
-      expect(body.to).to.equalBytes(bobKey.rawPub())
-      expect(body).to.have.property('amount')
-      expect(body.amount).to.equal(10000)
+      expect(msg.body).to.have.property('from')
+      expect(msg.body.from).to.equalBytes(aliceKey.rawPub())
+      expect(msg.body).to.have.property('to')
+      expect(msg.body.to).to.equalBytes(bobKey.rawPub())
+      expect(msg.body).to.have.property('amount')
+      expect(msg.body.amount).to.equal(10000)
     })
 
     it('should construct a complex message', () => {
@@ -111,48 +110,61 @@ describe('Message', () => {
           bar: [ 100, -200 ]
         }
       })
-      const body = msg.body()
 
-      expect(body.from).to.equalBytes(aliceKey.rawPub())
-      expect(body.foo).to.equal('Hello')
-      expect(body.bar.x).to.equal(100)
-      expect(body.bar.y).to.equal(-200)
+      expect(msg.body.from).to.equalBytes(aliceKey.rawPub())
+      expect(msg.body.foo).to.equal('Hello')
+      expect(msg.body.bar.x).to.equal(100)
+      expect(msg.body.bar.y).to.equal(-200)
     })
   })
 
   describe('typeLength', () => {
-    it('should be computed correctly', () => {
+    it('should be computed correctly for fixed-length messages', () => {
       expect(TxTransfer.typeLength()).to.equal(10 + 72 + 64)
+    })
+
+    it('should be computed correctly for var-length messages', () => {
+      expect(TxCreate.typeLength()).to.be.undefined()
     })
   })
 
-  describe('bodyLength', () => {
-    const msg = new TxTransfer({
-      body: {
+  describe('meta', () => {
+    it('should return correct meta for the message type', () => {
+      expect(TxTransfer.meta().factoryName).to.equal('message')
+      expect(TxTransfer.meta().messageId).to.equal(128)
+      expect(TxTransfer.meta().body).to.satisfy(isExonumType)
+      expect(TxTransfer.meta().body.meta().fields).to.be.an('array')
+    })
+  })
+
+  describe('set', () => {
+    it('should not allow to set readonly fields', () => {
+      const msg = TxTransfer.fromBody({
         from: aliceKey.pub(),
         to: bobKey.pub(),
         amount: 10000
-      }
+      })
+
+      expect(() => msg.set('protocolVersion', 1)).to.throw(/Cannot set field/)
+      expect(() => msg.set('networkId', 1)).to.throw(/Cannot set field/)
+      expect(() => msg.set('messageId', 255)).to.throw(/Cannot set field/)
+      expect(() => msg.set('serviceId', 255)).to.throw(/Cannot set field/)
     })
 
-    it('should be computed correctly', () => {
-      expect(msg.bodyLength()).to.equal(72)
+    it('should allow to set body', () => {
+      const msg = TxTransfer.fromBody({
+        from: aliceKey.pub(),
+        to: bobKey.pub(),
+        amount: 10000
+      })
+      let otherMsg = msg.set('body', msg.body.set('amount', 9000))
+
+      expect(otherMsg).to.be.instanceof(TxTransfer)
+      expect(otherMsg.body.amount).to.equal(9000)
     })
   })
 
   describe('serialize', () => {
-    it('should not serialize unsigned message', () => {
-      const msg = new TxTransfer({
-        body: {
-          from: aliceKey.pub(),
-          to: bobKey.pub(),
-          amount: 10000
-        }
-      })
-
-      expect(() => msg.serialize()).to.throw(/unsigned/i)
-    })
-
     it('should serialize message', () => {
       const msg = new TxTransfer({
         body: {
@@ -177,7 +189,7 @@ describe('Message', () => {
       // hex represenation of `amount`
       expect(serialized.subarray(10 + 64, 10 + 72)).to.equalBytes('1027000000000000')
 
-      expect(serialized.subarray(10 + 72)).to.equalBytes(msg.signature().serialize())
+      expect(serialized.subarray(10 + 72)).to.equalBytes(msg.signature)
     })
 
     it('should implement quirky serialization of segments in message', () => {
@@ -208,7 +220,7 @@ describe('Message', () => {
       // The 'Alice' string
       expect(serialized.subarray(10 + 40, 10 + 45)).to.equalBytes('416c696365')
 
-      expect(serialized.subarray(10 + 45)).to.equalBytes(msg.signature().serialize())
+      expect(serialized.subarray(10 + 45)).to.equalBytes(msg.signature)
     })
   })
 
@@ -231,7 +243,9 @@ describe('Message', () => {
           from: aliceKey.pub().toJSON(), // string
           to: bobKey.pub().toJSON(),
           amount: '10000'
-        }
+        },
+        signature: '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000'
       })
     })
 
@@ -254,7 +268,7 @@ describe('Message', () => {
           to: bobKey.pub().toJSON(),
           amount: '10000'
         },
-        signature: msg.signature().toJSON()
+        signature: msg.getOriginal('signature').toJSON()
       })
     })
 
@@ -267,7 +281,10 @@ describe('Message', () => {
         }
       })
 
-      expect(msg.toJSON()).to.deep.equal({
+      const json = msg.toJSON()
+      delete json.signature
+
+      expect(json).to.deep.equal({
         networkId: 0,
         protocolVersion: 0,
         serviceId: 1,
@@ -291,7 +308,7 @@ describe('Message', () => {
         const precommit = Precommit.from(data)
 
         precommit.author = function () {
-          return validators[this.body().validator]
+          return validators[this.body.validator]
         }
 
         expect(precommit.verify()).to.be.true()
@@ -321,8 +338,8 @@ describe('Message', () => {
 
       // Mutate the body of the message to invalidate the signature
       msg = new TxTransfer({
-        body: msg.body().set('amount', 9999),
-        signature: msg.signature()
+        body: msg.body.set('amount', 9999),
+        signature: msg.signature
       })
       expect(msg.verify()).to.be.false()
     })

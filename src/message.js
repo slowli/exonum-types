@@ -1,9 +1,16 @@
 import * as crypto from './crypto'
-import { createType, rawValue } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
 
 const DEFAULT_NETWORK_ID = 0
 const DEFAULT_PROTO_VER = 0
+
+// Fields in the messages that should not be settable via `.set()` method
+const READONLY_FIELDS = [
+  'networkId',
+  'protocolVersion',
+  'messageId',
+  'serviceId'
+]
 
 function message ({
   networkId,
@@ -29,12 +36,22 @@ function message ({
   // XXX: revert when meta for struct fields is implemented
   const authorField = undefined
 
-  class MessageType extends createType({
-    name: `Message<${BodyType.inspect()}>`,
-    typeLength: BodyType.typeLength() === undefined
-      ? undefined
-      : (headLength + BodyType.typeLength() + sigLength)
+  class MessageType extends resolver.resolve({
+    struct: [
+      { name: 'networkId', type: 'Uint8' },
+      { name: 'protocolVersion', type: 'Uint8' },
+      { name: 'messageId', type: 'Uint16' },
+      { name: 'serviceId', type: 'Uint16' },
+      { name: 'body', type: BodyType },
+      { name: 'signature', type: 'Signature' }
+    ]
   }) {
+    static typeLength () {
+      return BodyType.typeLength() === undefined
+        ? undefined
+        : (headLength + BodyType.typeLength() + sigLength)
+    }
+
     /**
      * Creates a new unsigned message with the specified body content.
      */
@@ -42,57 +59,45 @@ function message ({
       return new this({ body })
     }
 
-    constructor ({ body, signature }) {
-      signature = signature ? Signature.from(signature) : undefined
+    constructor ({ body, signature = Signature.ZEROS }) {
       super({
-        signature,
-        body: BodyType.from(body)
-      }, null)
-    }
-
-    header () {
-      return new MessageHeader({
         networkId,
         protocolVersion,
-        serviceId,
         messageId,
-        payloadLength: this.byteLength()
+        serviceId,
+        body,
+        signature
       })
     }
 
-    body () {
-      return rawValue(this).body
-    }
-
-    signature () {
-      return rawValue(this).signature
-    }
-
-    bodyLength () {
-      return this.body().byteLength()
+    set (name, value) {
+      if (READONLY_FIELDS.indexOf(name) >= 0) {
+        throw new TypeError(`Cannot set field ${name}, it is readonly`)
+      }
+      return super.set(name, value)
     }
 
     serializeForSigning () {
       const buffer = new Uint8Array(this.byteLength() - sigLength)
-      this.header().serialize(buffer.subarray(0, headLength))
-      this.body()._doSerialize(buffer.subarray(headLength), { offset: headLength })
+
+      header(this.byteLength()).serialize(buffer.subarray(0, headLength))
+      this.body._doSerialize(buffer.subarray(headLength), { offset: headLength })
+
       return buffer
     }
 
     _doSerialize (buffer) {
-      if (!this.signature()) {
-        throw new Error('Attempt to serialize unsigned message')
-      }
+      header(this.byteLength()).serialize(buffer.subarray(0, headLength))
 
-      this.header().serialize(buffer.subarray(0, headLength))
-      this.body()._doSerialize(buffer.subarray(headLength, buffer.length - sigLength), {
+      this.body._doSerialize(buffer.subarray(headLength, buffer.length - sigLength), {
         offset: headLength
       })
-      this.signature().serialize(buffer.subarray(buffer.length - sigLength))
+
+      this.getOriginal('signature').serialize(buffer.subarray(buffer.length - sigLength))
     }
 
     byteLength () {
-      return headLength + this.bodyLength() + sigLength
+      return headLength + this.body.byteLength() + sigLength
     }
 
     /**
@@ -107,38 +112,34 @@ function message ({
 
     sign (privateKey) {
       return new this.constructor({
-        body: this.body(),
+        body: this.body,
         signature: crypto.sign(this.serializeForSigning(), privateKey)
       })
     }
 
     verify () {
-      if (!this.signature()) return false
+      if (this.getOriginal('signature').equals(Signature.ZEROS)) {
+        return false
+      }
 
       return crypto.verify(this.serializeForSigning(),
-        this.signature(),
+        this.signature,
         this.author())
     }
 
-    toJSON () {
-      const json = {
-        networkId,
-        protocolVersion,
-        serviceId,
-        messageId,
-        body: this.body().toJSON()
-      }
-
-      if (this.signature()) {
-        json.signature = this.signature().toJSON()
-      }
-
-      return json
-    }
-
     toString () {
-      return `Message:${this.body()}`
+      return `Message:${this.body}`
     }
+  }
+
+  function header (payloadLength) {
+    return new MessageHeader({
+      networkId,
+      protocolVersion,
+      serviceId,
+      messageId,
+      payloadLength
+    })
   }
 
   return MessageType
@@ -146,6 +147,10 @@ function message ({
 
 export default initFactory(message, {
   name: 'message',
+
+  argumentMeta (spec) {
+    return Object.assign({}, spec)
+  },
 
   prepare ({
     networkId = DEFAULT_NETWORK_ID,
