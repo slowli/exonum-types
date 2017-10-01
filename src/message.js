@@ -33,8 +33,14 @@ function message ({
   const Signature = resolver.resolve('Signature')
   const sigLength = Signature.typeLength()
 
-  // XXX: revert when meta for struct fields is implemented
-  const authorField = undefined
+  let authorField
+  if (BodyType.meta().factoryName === 'struct') {
+    // Search the author field by the corresponding information in meta
+    const candidates = BodyType.meta().fields.filter(({ author }) => author === true)
+    if (candidates.length === 1) {
+      authorField = candidates[0].name
+    }
+  }
 
   class MessageType extends resolver.resolve({
     struct: [
@@ -102,12 +108,13 @@ function message ({
 
     /**
      * Retrieves the public key, against which the signature of the message will
-     * be checked. By default, it is defined as the first field with the `"author"` metadata.
+     * be checked. By default, it is defined as the field with the `"author"` metadata.
+     * If there are no or multiple such fields, `author()` always returns `undefined`.
      *
-     * @returns {PublicKey}
+     * @returns {?PublicKey}
      */
     author () {
-      return this.body()[authorField]
+      return this.body[authorField]
     }
 
     sign (privateKey) {
@@ -118,6 +125,9 @@ function message ({
     }
 
     verify () {
+      if (!this.author()) {
+        return false
+      }
       if (this.getOriginal('signature').equals(Signature.ZEROS)) {
         return false
       }

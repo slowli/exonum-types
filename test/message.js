@@ -41,11 +41,6 @@ describe('Message', () => {
     }
   })
 
-  // XXX: remove when meta for struct fields is implemented
-  TxTransfer.prototype.author = function () {
-    return this.body.from
-  }
-
   const ComplexMessage = types.resolve({
     message: {
       serviceId: 1,
@@ -63,6 +58,14 @@ describe('Message', () => {
           }
         }
       ]
+    }
+  })
+
+  const NonStructMessage = types.resolve({
+    message: {
+      serviceId: 1,
+      messageId: 1001,
+      body: { fixedBuffer: 4 }
     }
   })
 
@@ -115,6 +118,11 @@ describe('Message', () => {
       expect(msg.body.foo).to.equal('Hello')
       expect(msg.body.bar.x).to.equal(100)
       expect(msg.body.bar.y).to.equal(-200)
+    })
+
+    it('should construct a message with non-struct body', () => {
+      const msg = NonStructMessage.fromBody('01234567')
+      expect(msg.body).to.equalBytes('01234567')
     })
   })
 
@@ -272,6 +280,20 @@ describe('Message', () => {
       })
     })
 
+    it('should serialize non-struct message body', () => {
+      const msg = NonStructMessage.fromBody('00112233')
+
+      expect(msg.toJSON()).to.deep.equal({
+        networkId: 0,
+        protocolVersion: 0,
+        serviceId: 1,
+        messageId: 1001,
+        body: '00112233',
+        signature: '0000000000000000000000000000000000000000000000000000000000000000' +
+          '0000000000000000000000000000000000000000000000000000000000000000'
+      })
+    })
+
     it('should convert complex message to standard form', () => {
       const msg = new ComplexMessage({
         body: {
@@ -324,6 +346,11 @@ describe('Message', () => {
         }
       })
 
+      expect(msg.verify()).to.be.false()
+    })
+
+    it('should not verify message if the author field is undefined', () => {
+      const msg = NonStructMessage.fromBody('ffffffff')
       expect(msg.verify()).to.be.false()
     })
 
