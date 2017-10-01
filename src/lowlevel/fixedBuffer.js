@@ -103,11 +103,29 @@ function fixedBuffer (length) {
     }
   }
 
+  FixedBuffer.ZEROS = new FixedBuffer(new Array(length))
   FixedBuffer.prototype.hashCode = memoize(FixedBuffer.prototype.hashCode)
 
   return FixedBuffer
 }
 
+// Maximum supported buffer size. Chosen according to the maximum supported message size;
+// the sane values are orders of magnitude lower.
+const MAX_BUFFER_LENGTH = 2 * 1024 * 1024
+
 export default initFactory(fixedBuffer, {
-  name: 'buffer'
+  name: 'buffer',
+
+  prepare (length) {
+    length = +length
+    if (isNaN(length)) {
+      throw new TypeError('Invalid buffer size; number expected')
+    }
+
+    if (length <= 0 || length > MAX_BUFFER_LENGTH) {
+      throw new RangeError(`Unexpected buffer size: ${length}; expected value between 1 and ${MAX_BUFFER_LENGTH}`)
+    }
+
+    return length
+  }
 })

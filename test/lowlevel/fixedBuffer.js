@@ -18,9 +18,40 @@ describe('fixedBuffer', () => {
   const ShortBuffer = fixedBuffer(4)
   const LongBuffer = fixedBuffer(32)
 
-  it('should declare correct byteLength', () => {
+  const invalidSizes = [
+    ['undefined', undefined],
+    ['object', {}],
+    ['string', 'abc'],
+    ['array', ['a', 5]],
+    ['function', () => {}]
+  ]
+
+  invalidSizes.forEach(({ 0: name, 1: arg }) => {
+    it(`should throw on invalid buffer size (${name})`, () => {
+      expect(() => fixedBuffer(arg)).to.throw(TypeError, /Invalid buffer size/)
+    })
+  })
+
+  it('should throw on zero buffer size', () => {
+    expect(() => fixedBuffer(0)).to.throw(RangeError)
+  })
+
+  it('should throw on negative buffer size', () => {
+    expect(() => fixedBuffer(-5)).to.throw(RangeError)
+  })
+
+  it('should throw on very large buffer size', () => {
+    expect(() => fixedBuffer(10000000)).to.throw(RangeError)
+  })
+
+  it('should declare correct typeLength', () => {
     expect(ShortBuffer.typeLength()).to.equal(4)
     expect(LongBuffer.typeLength()).to.equal(32)
+  })
+
+  it('should declare correct meta', () => {
+    expect(ShortBuffer.meta().factoryName).to.equal('buffer')
+    expect(ShortBuffer.meta().size).to.equal(4)
   })
 
   describe('constructor', () => {
@@ -218,6 +249,13 @@ describe('fixedBuffer', () => {
       expect(fixedBuffer(4).equals(fixedBuffer(5))).to.be.false()
       expect(fixedBuffer(32).equals(std.PublicKey)).to.be.true()
       expect(std.Hash.equals(std.PublicKey)).to.be.true()
+    })
+  })
+
+  describe('ZEROS', () => {
+    it('should be declared for all buffer types', () => {
+      expect(std.PublicKey.ZEROS.serialize()).to.equalBytes(new Uint8Array(32))
+      expect(fixedBuffer(4).ZEROS.serialize()).to.equalBytes(new Uint8Array(4))
     })
   })
 })
