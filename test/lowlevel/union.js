@@ -26,10 +26,13 @@ describe('union', () => {
     { name: 'head', type: std.Uint32 },
     { name: 'tail', type: std.Str }
   ])
-  const List = union([
-    { name: 'none', type: std.None },
-    { name: 'some', type: ListRecord }
-  ])
+  const List = union({
+    tagEmbedding: 'none',
+    variants: [
+      { name: 'none', type: std.None },
+      { name: 'some', type: ListRecord }
+    ]
+  })
 
   const EmbeddedUnion = union([
     { name: 'union', type: StrOrInt },
@@ -37,10 +40,11 @@ describe('union', () => {
   ])
 
   const UnionWithMarker = union({
-    marker: 'kind',
+    tag: 'kind',
+    tagEmbedding: 'internal',
     variants: [
-      { name: 'int', type: std.Int32 },
-      { name: 'bool', type: std.Bool }
+      { name: 'int2', type: struct([ { name: 'x', type: std.Int32 }, { name: 'y', type: std.Int32 } ]) },
+      { name: 'bool2', type: struct([ { name: 'x', type: std.Bool }, { name: 'y', type: std.Bool } ]) }
     ]
   })
 
@@ -51,11 +55,22 @@ describe('union', () => {
       expect(StrOrInt.str).to.be.a('function')
 
       expect(StrOrInt.meta().factory).to.equal(union)
-      expect(StrOrInt.meta().marker).to.equal('type')
+      expect(StrOrInt.meta().tag).to.equal('type')
+      expect(StrOrInt.meta().tagEmbedding).to.equal('external')
       expect(StrOrInt.meta().variants).to.deep.equal([
         { name: 'str', type: std.Str },
         { name: 'int', type: std.Uint32 }
       ])
+    })
+
+    it('should throw on spec with invalid tagEmbedding', () => {
+      expect(() => union({
+        tagEmbedding: 'non-existing',
+        variants: [
+          { name: 'foo', type: std.Int32 },
+          { name: 'bar', type: std.Str }
+        ]
+      })).to.throw(/Invalid tag embedding/)
     })
 
     it('should calculate byteLength', () => {
@@ -68,15 +83,20 @@ describe('union', () => {
       expect(x.str).to.equal('Hello world')
     })
 
+    it('should instantiate from an explicitly mentioned tag', () => {
+      const x = new StrOrInt('Hello world', 'str')
+      expect(x.type).to.equal('str')
+      expect(x.str).to.equal('Hello world')
+    })
+
     it('should instantiate from a variant shortcut', () => {
       const x = StrOrInt.str('Hello world')
       expect(x.type).to.equal('str')
       expect(x.str).to.equal('Hello world')
     })
 
-    it('should instantiate from an object with embedded type declaration', () => {
+    it('should instantiate from an object with no tagging', () => {
       const x = new List({
-        type: 'some',
         head: 15,
         tail: 'not actually a tail'
       })
@@ -84,22 +104,94 @@ describe('union', () => {
       expect(x.some.toJSON()).to.deep.equal({ head: 15, tail: 'not actually a tail' })
     })
 
-    it('should instantiate from an object with custom marker', () => {
-      const x = UnionWithMarker.from({ kind: 'int', hex: 'ff' })
-      expect(x.int).to.equal(255)
+    it('should instantiate correct variant for complex variants with no tagging', () => {
+      const ComplexUnion = union({
+        tagEmbedding: 'none',
+        variants: [
+          {
+            name: 'branch',
+            type: struct([
+              { name: 'left', type: std.Int32 },
+              { name: 'right', type: std.Int32 }
+            ])
+          },
+          {
+            name: 'stub',
+            type: struct([
+              { name: 'left', type: std.Int32 }
+            ])
+          },
+          {
+            name: 'value', type: std.Str
+          }
+        ]
+      })
+
+      let u = ComplexUnion.from({ left: 32, right: -32 })
+      expect(u.type).to.equal('branch')
+      expect(u.branch.left).to.equal(32)
+      u = ComplexUnion.from({ left: 32 })
+      expect(u.type).to.equal('stub')
+      expect(u.stub.left).to.equal(32)
+      u = ComplexUnion.from('abcdef')
+      expect(u.type).to.equal('value')
+      expect(u.value).to.equal('abcdef')
+    })
+
+    it('should instantiate from an object with custom tag', () => {
+      const union = UnionWithMarker.from({ kind: 'int2', x: 255, y: -45 })
+      expect(union.int2.x).to.equal(255)
+    })
+
+    it('should throw if an explicitly mentioned tag is invalid', () => {
+      expect(() => new StrOrInt('Hello world', 'bool')).to.throw(/Invalid union tag/i)
+    })
+
+    it('should throw for externally-tagged union if supplied with non-object', () => {
+      const nonObjects = [
+        null,
+        undefined,
+        54,
+        '!!!',
+        true,
+        () => {}
+      ]
+
+      nonObjects.forEach(x => {
+        expect(() => new StrOrInt(x)).to.throw('Invalid initializer for union; object expected')
+      })
+    })
+
+    it('should throw for internally-tagged union if supplied with non-object', () => {
+      const nonObjects = [
+        null,
+        undefined,
+        54,
+        '!!!',
+        true,
+        () => {}
+      ]
+
+      nonObjects.forEach(x => {
+        expect(() => new UnionWithMarker(x)).to.throw('Invalid initializer for union; object expected')
+      })
     })
 
     it('should throw if an object does not contain allowed variant tags', () => {
-      expect(() => new StrOrInt({ bool: false })).to.throw(TypeError, /invalid/i)
+      expect(() => new StrOrInt({ bool: false })).to.throw(/No matching union variant/i)
+    })
+
+    it('should throw if an object contains several matching external tags', () => {
+      expect(() => new StrOrInt({ str: '32', int: 25 })).to.throw(/Ambiguous union initializer/i)
     })
 
     it('should throw if a marker declaration does not have allowed variant tag', () => {
-      expect(() => new StrOrInt({ type: 'bool', dec: '1' })).to.throw(TypeError, /invalid/i)
+      expect(() => new List({ head: 15 })).to.throw(/No matching union variant/i)
     })
 
     it('should throw if the custom marker is not specified', () => {
       // The marker is `kind`, but we have supplied default `type`
-      expect(() => UnionWithMarker.from({ type: 'int', hex: 'ffffffff' })).to.throw(/invalid.*init/i)
+      expect(() => UnionWithMarker.from({ type: 'int2', x: 44, y: -44 })).to.throw(/Invalid union tag/i)
     })
   })
 
@@ -113,7 +205,6 @@ describe('union', () => {
 
     it('should work for union with embedded sequence', () => {
       const lst = {
-        type: 'some',
         head: 15,
         tail: 'not actually a tail'
       }
@@ -160,18 +251,21 @@ describe('union', () => {
     })
 
     it('should return unmodified value for structs', () => {
-      const StructUnion = union([
-        {
-          name: 'point',
-          type: struct([
-            { name: 'x', type: std.Int32 },
-            { name: 'y', type: std.Int32 }
-          ])
-        },
-        { name: 'u64', type: std.Uint64 }
-      ])
+      const StructUnion = union({
+        tagEmbedding: 'none',
+        variants: [
+          {
+            name: 'point',
+            type: struct([
+              { name: 'x', type: std.Int32 },
+              { name: 'y', type: std.Int32 }
+            ])
+          },
+          { name: 'u64', type: std.Uint64 }
+        ]
+      })
 
-      const x = new StructUnion({ point: [5, -3] })
+      const x = new StructUnion([5, -3])
       expect(x.point).to.satisfy(isExonumObject)
       expect(x.point.get('x')).to.equal(5)
     })
@@ -287,23 +381,26 @@ describe('union', () => {
     })
 
     it('should return a value', () => {
-      const RealList = std.resolver.add([{
+      const RealList = std.resolver.add({
         name: 'List',
-        union: [
-          { name: 'none', type: 'None' },
-          {
-            name: 'some',
-            type: {
-              struct: [
-                { name: 'head', type: 'Str' },
-                { name: 'tail', type: 'List' }
-              ]
+        union: {
+          tagEmbedding: 'none',
+          variants: [
+            { name: 'none', type: 'None' },
+            {
+              name: 'some',
+              type: {
+                struct: [
+                  { name: 'head', type: 'Str' },
+                  { name: 'tail', type: 'List' }
+                ]
+              }
             }
-          }
-        ]
-      }]).resolve('List')
+          ]
+        }
+      }).resolve('List')
 
-      let lst = RealList.from({ some: ['foo', { some: ['bar', { none: null }] }] })
+      let lst = RealList.from(['foo', ['bar']])
       let elems = []
       while (lst) {
         lst = lst.match({
@@ -341,32 +438,37 @@ describe('union', () => {
     })
 
     it('should serialize as a marker + variant for embedded types', () => {
-      let x = new List({ some: [ 256, 'ABC' ] })
+      let x = new List([ 256, 'ABC' ])
       expect(x.serialize()).to.equalBytes('01' + // marker
         '00010000' + // head
         '0c000000' + '03000000' + // segment pointer to the tail
         '414243' // tail
       )
 
-      x = new List({ none: null })
+      x = new List(null)
       expect(x.serialize()).to.equalBytes('00')
     })
   })
 
   describe('toJSON', () => {
-    it('should work in the basic case', () => {
+    it('should work for union with external tagging', () => {
       let x = new StrOrInt({ str: 'Hello world' })
       expect(x.toJSON()).to.deep.equal({ str: 'Hello world' })
       x = StrOrInt.int(123)
       expect(x.toJSON()).to.deep.equal({ int: 123 })
     })
 
-    it('should work for union with embedded union', () => {
+    it('should work for union with internal tagging', () => {
+      let x = UnionWithMarker.int2([42, -42])
+      expect(x.toJSON()).to.deep.equal({ kind: 'int2', x: 42, y: -42 })
+      x = UnionWithMarker.from({ kind: 'bool2', x: false, y: true })
+      expect(x.toJSON()).to.deep.equal({ kind: 'bool2', x: false, y: true })
+    })
+
+    it('should work for union with no tagging', () => {
       const lst = {
-        some: {
-          head: 15,
-          tail: 'not actually a tail'
-        }
+        head: 15,
+        tail: 'not actually a tail'
       }
       const x = new List(lst)
       expect(x.toJSON()).to.deep.equal(lst)

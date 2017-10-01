@@ -62,7 +62,7 @@ function treeHash (node) {
   return node.match({
     hash: (h) => h,
     val: (val) => hash(val),
-    branch: ({left, right}) => hash(treeHash(left), treeHash(right)),
+    branch: ({ left, right }) => hash(treeHash(left), treeHash(right)),
     stub: (stub) => hash(treeHash(stub))
   })
 }

@@ -618,9 +618,10 @@ describe('TypeResolver', () => {
     expect(branch.left.type).to.equal('hash')
     expect(branch.right.val).to.equal('Hello, world')
     branch = branch.set('right', {
-      type: 'branch',
-      left: { val: '!' },
-      right: { hash: 'ffffffff00000000' }
+      branch: {
+        left: { val: '!' },
+        right: { hash: 'ffffffff00000000' }
+      }
     })
 
     expect(branch.right.type).to.equal('branch')

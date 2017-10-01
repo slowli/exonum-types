@@ -4,27 +4,6 @@ import { createType, rawValue, rawOrSelf } from './common'
 import initFactory from './initFactory'
 import { validateAndResolveFields } from './TypeResolver'
 
-const DEFAULT_MARKER = 'type'
-
-function parseUnion (obj, marker, variantNames) {
-  let variantName, variant
-
-  if (obj[marker]) {
-    variant = Object.assign({}, obj)
-    variantName = obj[marker]
-    delete variant[marker]
-
-    if (variantNames.indexOf(variantName) < 0) {
-      return undefined
-    }
-  } else {
-    variantName = variantNames.find(name => name in obj)
-    if (variantName) variant = obj[variantName]
-  }
-
-  return variantName ? [variantName, variant] : undefined
-}
-
 /**
  * Tagged union (aka enum, aka type sum) is a type,
  * instances of which belong to one of the defined variants.
@@ -55,25 +34,83 @@ function parseUnion (obj, marker, variantNames) {
  *   console.log(x.str) // undefined
  *   console.log(x.toJSON()) // { int: 5 }
  */
-function union ({ marker, variants }, resolver) {
+function union ({
+  tag: tagProperty,
+  tagEmbedding,
+  variants
+}, resolver) {
   const variantNames = variants.map(f => f.name)
-  const markerByteLength = 1
+  const markerByteLength = 1 // XXX: may become variable later
 
   class UnionType extends createType({
     name: unionName(variants),
     typeLength: undefined
   }) {
-    constructor (obj) {
-      const parsed = parseUnion(obj, marker, variantNames)
-      if (!parsed) {
-        // TODO: more desriptive message
-        throw new TypeError('Invalid union initializer')
+    constructor (obj, maybeTag) {
+      let tag, value
+
+      if (maybeTag) {
+        // Tag is explicitly mentioned in the constructor
+        tag = maybeTag
+        if (variantNames.indexOf(tag) < 0) {
+          throw new Error(`Invalid union tag specified: ${tag}`)
+        }
+
+        value = variants[variantNames.indexOf(tag)].type.from(obj)
+      } else if (tagEmbedding === 'none') {
+        // Sequentially try all variants; initialize to the first matching variant
+        for (let i = 0; i < variants.length; i++) {
+          const { name, type } = variants[i]
+
+          try {
+            tag = name
+            value = type.from(obj)
+            break
+          } catch (e) {
+            // XXX: narrow `e` to a sensible type and rethrow for other errors
+          }
+        }
+
+        if (!value) {
+          throw new Error('No matching union variant found')
+        }
+      } else {
+        let valueInitializer
+
+        if (typeof obj !== 'object' || !obj) {
+          throw new TypeError('Invalid initializer for union; object expected')
+        }
+
+        switch (tagEmbedding) {
+          case 'external':
+            // Search for variant tags in keys of the object
+            const possibleTags = Object.keys(obj).filter(name => variantNames.indexOf(name) >= 0)
+            if (possibleTags.length === 0) {
+              throw new Error('No matching union variant found')
+            } else if (possibleTags.length > 1) {
+              throw new Error(`Ambiguous union initializer: cannot decide among variants ${possibleTags.join(', ')}`)
+            }
+
+            tag = possibleTags[0]
+            valueInitializer = obj[tag]
+            break
+          case 'internal':
+            tag = obj[tagProperty]
+            valueInitializer = Object.assign({}, obj)
+            delete valueInitializer[tagProperty]
+            break
+        }
+
+        if (variantNames.indexOf(tag) < 0) {
+          throw new Error(`Invalid union tag specified: ${tag}`)
+        }
+
+        value = variants[variantNames.indexOf(tag)].type.from(valueInitializer)
       }
-      const value = variants[variantNames.indexOf(parsed[0])].type.from(parsed[1])
 
       // We don't want to return raw value for external uses;
       // instead, the value may be unwrapped in `get()` (see below)
-      super({ value, variant: parsed[0] }, null)
+      super({ value, variant: tag }, null)
     }
 
     byteLength () {
@@ -148,7 +185,14 @@ function union ({ marker, variants }, resolver) {
     }
 
     toJSON () {
-      return { [getVariant(this)]: getValue(this).toJSON() }
+      switch (tagEmbedding) {
+        case 'external':
+          return { [getVariant(this)]: getValue(this).toJSON() }
+        case 'internal':
+          return Object.assign(getValue(this).toJSON(), { [tagProperty]: getVariant(this) })
+        case 'none':
+          return getValue(this).toJSON()
+      }
     }
 
     toString () {
@@ -182,7 +226,7 @@ function union ({ marker, variants }, resolver) {
   variantNames.forEach(name => {
     Object.defineProperty(UnionType, name, {
       value: function (obj) {
-        return new this({ [name]: obj })
+        return new this(obj, name)
       }
     })
 
@@ -195,7 +239,7 @@ function union ({ marker, variants }, resolver) {
     })
   })
 
-  Object.defineProperty(UnionType.prototype, marker, {
+  Object.defineProperty(UnionType.prototype, tagProperty, {
     enumerable: true,
     configurable: false,
     get () {
@@ -211,22 +255,25 @@ export default initFactory(union, {
 
   argumentMeta (spec) {
     return {
-      marker: spec.marker,
+      tag: spec.tag,
+      tagEmbedding: spec.tagEmbedding,
       variants: spec.variants
     }
   },
 
   prepare (spec, resolver) {
-    let marker, variants
-    if (!Array.isArray(spec)) {
-      ({ marker, variants } = spec)
-    } else {
-      marker = DEFAULT_MARKER
-      variants = spec
+    if (Array.isArray(spec)) {
+      spec = { variants: spec }
+    }
+    let { tagEmbedding = 'external', tag = 'type', variants } = spec
+
+    const allowedEmbeddings = [ 'none', 'internal', 'external' ]
+    if (allowedEmbeddings.indexOf(tagEmbedding) < 0) {
+      throw new TypeError(`Invalid tag embedding: ${tagEmbedding}; one of ${allowedEmbeddings.join(', ')} expected`)
     }
 
     variants = validateAndResolveFields(variants, resolver)
-    return { marker, variants }
+    return { tagEmbedding, tag, variants }
   },
 
   typeTag ({ variants }) {

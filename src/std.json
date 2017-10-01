@@ -103,27 +103,30 @@
     "name": "MapProofRoot",
     "factory": {
       "typeParams": [{ "name": "V" }],
-      "union": [
-        { "name": "empty", "type": "None" },
-        {
-          "name": "stub",
-          "type": {
-            "struct": [
-              { "name": "key", "type": "Bits256" },
-              {
-                "name": "value",
-                "type": {
-                  "union": [
-                    { "name": "hash", "type": "Hash" },
-                    { "name": "val", "type": { "typeParam": "V" } }
-                  ]
+      "union": {
+        "tagEmbedding": "none",
+        "variants": [
+          { "name": "empty", "type": "None" },
+          {
+            "name": "stub",
+            "type": {
+              "struct": [
+                { "name": "key", "type": "Bits256" },
+                {
+                  "name": "value",
+                  "type": {
+                    "union": [
+                      { "name": "hash", "type": "Hash" },
+                      { "name": "val", "type": { "typeParam": "V" } }
+                    ]
+                  }
                 }
-              }
-            ]
-          }
-        },
-        { "name": "tree", "type": { "MapProofNode": { "typeParam": "V" } } }
-      ]
+              ]
+            }
+          },
+          { "name": "tree", "type": { "MapProofNode": { "typeParam": "V" } } }
+        ]
+      }
     }
   }
 ]

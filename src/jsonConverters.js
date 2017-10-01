@@ -12,9 +12,14 @@ export function convertListJSON (json) {
   }
 
   if (('left' in json) && ('right' in json)) {
-    json.type = 'branch'
-    convertChild(json, 'left')
-    convertChild(json, 'right')
+    json.branch = {
+      left: json.left,
+      right: json.right
+    }
+    delete json.left
+    delete json.right
+    convertChild(json.branch, 'left')
+    convertChild(json.branch, 'right')
   } else if ('left' in json) {
     json.stub = json.left
     delete json.left
@@ -46,15 +51,16 @@ function convertTreeJSON (json) {
   } else if (Object.keys(json).length === 2) {
     // Branch
     const { 0: leftKey, 1: rightKey } = Object.keys(json).sort()
-    json.type = 'branch'
-    json.leftKey = leftKey
-    json.rightKey = rightKey
-    json.left = json[leftKey]
-    json.right = json[rightKey]
+    json.branch = {
+      leftKey,
+      rightKey,
+      left: json[leftKey],
+      right: json[rightKey]
+    }
     delete json[leftKey]
     delete json[rightKey]
-    convertChild(json, 'left')
-    convertChild(json, 'right')
+    convertChild(json.branch, 'left')
+    convertChild(json.branch, 'right')
   } else {
     throw new TypeError('Invalid proof node')
   }
@@ -70,15 +76,14 @@ export function convertMapJSON (json) {
   const props = Object.keys(json)
   switch (props.length) {
     case 0:
-      return { type: 'empty' }
+      return null
     case 1:
       return {
-        type: 'stub',
         key: props[0],
         value: typeof json[props[0]] === 'string' ? { hash: json[props[0]] } : json[props[0]]
       }
     case 2:
-      return { tree: convertTreeJSON(json) }
+      return convertTreeJSON(json)
     default:
       throw new TypeError('Invalid JSON for MapView; object with <=2 properties expected')
   }
