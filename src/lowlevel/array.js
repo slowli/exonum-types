@@ -109,6 +109,7 @@ function array (ElementType, resolver) {
 
 export default initFactory(array, {
   name: 'array',
+  argumentMeta: 'element',
 
   prepare (Type, resolver) {
     return resolver.resolve(Type)

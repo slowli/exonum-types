@@ -63,7 +63,21 @@ describe('struct', () => {
   describe('constructor', () => {
     it('should parse spec', () => {
       expect(Type).to.satisfy(isExonumType)
-      // FIXME verify schema
+      expect(Type.meta().factoryName).to.equal('struct')
+      expect(Type.meta().fields).to.deep.equal([
+        { name: 'foo', type: std.Uint32 },
+        { name: 'bar', type: std.Int64 }
+      ])
+    })
+
+    it('should retain additional meta in field spec', () => {
+      const TypeWithMeta = struct([
+        { name: 'foo', type: std.Uint32, transient: true },
+        { name: 'bar', type: std.PublicKey, author: true }
+      ])
+
+      expect(TypeWithMeta.meta().fields[0].transient).to.be.true()
+      expect(TypeWithMeta.meta().fields[1].author).to.be.true()
     })
 
     it('should calculate type length', () => {

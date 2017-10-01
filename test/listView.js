@@ -6,6 +6,7 @@ import dirtyChai from 'dirty-chai'
 
 import { convertListJSON } from '../src/jsonConverters'
 import types from '../src/std'
+import { isExonumType } from '../src/lowlevel/common'
 
 import samples from './data/listView.json'
 
@@ -17,6 +18,15 @@ const expect = chai
 const listView = types.listView
 
 describe('listView', () => {
+  describe('factory', () => {
+    it('should create type', () => {
+      const StrListView = listView('Str')
+      expect(StrListView).to.satisfy(isExonumType)
+      expect(StrListView.meta().factoryName).to.equal('listView')
+      expect(StrListView.meta().value).to.equal(types.Str)
+    })
+  })
+
   function testValidSample (sampleName) {
     describe(`on sample ${sampleName}`, () => {
       const sample = samples[sampleName]

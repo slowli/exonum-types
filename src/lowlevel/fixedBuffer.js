@@ -115,6 +115,7 @@ const MAX_BUFFER_LENGTH = 2 * 1024 * 1024
 
 export default initFactory(fixedBuffer, {
   name: 'buffer',
+  argumentMeta: 'size',
 
   prepare (length) {
     length = +length

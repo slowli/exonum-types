@@ -49,6 +49,13 @@ describe('union', () => {
       expect(StrOrInt).to.be.a('function')
       expect(StrOrInt.int).to.be.a('function')
       expect(StrOrInt.str).to.be.a('function')
+
+      expect(StrOrInt.meta().factory).to.equal(union)
+      expect(StrOrInt.meta().marker).to.equal('type')
+      expect(StrOrInt.meta().variants).to.deep.equal([
+        { name: 'str', type: std.Str },
+        { name: 'int', type: std.Uint32 }
+      ])
     })
 
     it('should calculate byteLength', () => {

@@ -119,6 +119,7 @@ function listView (ValType, resolver) {
 
 export default initFactory(listView, {
   name: 'listView',
+  argumentMeta: 'value',
 
   prepare (Type, resolver) {
     return resolver.resolve(Type)

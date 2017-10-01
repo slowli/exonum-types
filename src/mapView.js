@@ -1,6 +1,6 @@
 import { OrderedMap } from 'immutable'
 
-import { memoize, rawValue, setRawValue } from './lowlevel/common'
+import { createType, memoize, rawValue } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
 import { getBit } from './Bits256'
@@ -170,7 +170,9 @@ function mapView (ValType, resolver) {
 
   const ProofRoot = resolver.resolve({ MapProofRoot: ValType })
 
-  class MapView {
+  class MapView extends createType({
+    name: `MapView<${ValType.inspect()}>`
+  }) {
     constructor (obj) {
       const root = ProofRoot.from(obj)
 
@@ -190,8 +192,7 @@ function mapView (ValType, resolver) {
         }
       })
 
-      const map = OrderedMap(mapEntries)
-      setRawValue(this, { root, map })
+      super({ root, map: OrderedMap(mapEntries) })
     }
 
     rootHash () {
@@ -244,6 +245,7 @@ function mapView (ValType, resolver) {
 
 export default initFactory(mapView, {
   name: 'mapView',
+  argumentMeta: 'value',
 
   prepare (ValType, resolver) {
     return resolver.resolve(ValType)

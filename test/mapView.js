@@ -4,9 +4,9 @@ import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
-import mapView from '../src/mapView'
 import { convertMapJSON } from '../src/jsonConverters'
 import types from '../src/std'
+import { isExonumType } from '../src/lowlevel/common'
 
 import samples from './data/mapView.json'
 
@@ -14,6 +14,8 @@ const expect = chai
   .use(chaiBytes)
   .use(dirtyChai)
   .expect
+
+const mapView = types.mapView
 
 function padWithZeros (bits) {
   while (bits.length < 256) bits = bits + '0'
@@ -31,6 +33,15 @@ function padWithRandom (bits) {
 }
 
 describe('mapView', () => {
+  describe('factory', () => {
+    it('should create type', () => {
+      const StrMapView = mapView('Str')
+      expect(StrMapView).to.satisfy(isExonumType)
+      expect(StrMapView.meta().factoryName).to.equal('mapView')
+      expect(StrMapView.meta().value).to.equal(types.Str)
+    })
+  })
+
   function testValidSample (sampleName) {
     describe(`on sample ${sampleName}`, () => {
       const sample = samples[sampleName]

@@ -148,6 +148,7 @@ function struct (spec, resolver) {
 
 export default initFactory(struct, {
   name: 'struct',
+  argumentMeta: 'fields',
 
   prepare (fields, resolver) {
     return validateAndResolveFields(fields, resolver)

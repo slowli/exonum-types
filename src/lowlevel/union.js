@@ -209,6 +209,13 @@ function union ({ marker, variants }, resolver) {
 export default initFactory(union, {
   name: 'union',
 
+  argumentMeta (spec) {
+    return {
+      marker: spec.marker,
+      variants: spec.variants
+    }
+  },
+
   prepare (spec, resolver) {
     let marker, variants
     if (!Array.isArray(spec)) {

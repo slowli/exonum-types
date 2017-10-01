@@ -12,6 +12,12 @@ const DUMMY_RESOLVER = dummyResolver()
  * @param {(any, TypeResolver) => any} factory
  * @param {string} name
  *   Name of the factory. Should be unique (XXX: enforce on resolver level?)
+ * @param {string | (any) => Object} argumentMeta
+ *   Information inferred from the factory argument that should be added to the
+ *   constructed type meta. If `argumentMeta` is a string, the prepared argument
+ *   is recorded in the corresponding property of the meta. Otherwise, `argumentMeta`
+ *   is assumed to be a function that converts prepared factory argument into an object,
+ *   which is then added to meta with `Object.assign`.
  * @param {(any, TypeResolver) => any} prepare
  *   Callback that can be used to validate and/or transform the argument passed
  *   to the factory. For example, a factory may resolve type definitions
@@ -31,10 +37,16 @@ const DUMMY_RESOLVER = dummyResolver()
  */
 export default function initFactory (factory, {
   name,
+  argumentMeta = 'argument',
   prepare = (arg, resolver) => arg,
   typeTag = (arg) => arg,
   typeName = (arg) => `${name}<?>`
 } = {}) {
+  if (typeof argumentMeta === 'string') {
+    const prop = argumentMeta
+    argumentMeta = (arg) => ({ [prop]: arg })
+  }
+
   const memoizedFactory = (arg, resolver) => {
     if (!resolver) resolver = DUMMY_RESOLVER
 
@@ -54,6 +66,17 @@ export default function initFactory (factory, {
         configurable: true,
         value: function () {
           return fullTag
+        }
+      })
+
+      Object.defineProperty(type, 'meta', {
+        enumerable: false,
+        configurable: true,
+        value: function () {
+          return Object.assign({
+            factory: memoizedFactory,
+            factoryName: name
+          }, argumentMeta(arg))
         }
       })
 

@@ -34,6 +34,9 @@ describe('array', () => {
     [EUint8Array, StrArray, BoolArray, StructArray].forEach(Type => {
       expect(Type).to.satisfy(isExonumType)
     })
+
+    expect(StrArray.meta().factory).to.equal(array)
+    expect(StrArray.meta().element).to.equal(std.Str)
   })
 
   describe('constructor', () => {
