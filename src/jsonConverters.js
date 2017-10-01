@@ -69,7 +69,7 @@ function convertTreeJSON (json) {
 }
 
 export function convertMapJSON (json) {
-  if (typeof json !== 'object') {
+  if (!json || typeof json !== 'object') {
     throw new TypeError('Invalid JSON for MapView; object expected')
   }
 
