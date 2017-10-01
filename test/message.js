@@ -69,8 +69,8 @@ describe('Message', () => {
     }
   })
 
-  const aliceKey = crypto.randomKey()
-  const bobKey = crypto.randomKey()
+  const aliceKey = crypto.secret()
+  const bobKey = crypto.secret()
 
   describe('constructor', () => {
     it('should construct a message', () => {

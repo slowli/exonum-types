@@ -46,10 +46,42 @@ export function verify (message, signature, pubkey) {
   return nacl.sign.detached.verify(message, rawOrSelf(signature), rawOrSelf(pubkey))
 }
 
-export function randomKey () {
-  const secretKey = nacl.sign.keyPair().secretKey
-  secretKey.pub = function () { return PublicKey.from(fromSecretKey(this)) }
-  secretKey.rawPub = function () { return fromSecretKey(this) }
+/**
+ * Randomly generates a key pair for signing/verification purposes.
+ *
+ * @returns {Uint8Array}
+ *   Secret key with the following additional methods:
+ *   - `pub(): PublicKey` returns Exonum-typed public key
+ *   - `rawPub(): Uint8Array` returns 32-byte raw public key buffer
+ */
+export function secret () {
+  const { secretKey, publicKey } = nacl.sign.keyPair()
+  const exonumPub = PublicKey.from(publicKey)
+
+  secretKey.pub = function () { return exonumPub }
+  secretKey.rawPub = function () { return publicKey.slice(0) }
+
+  return secretKey
+}
+
+/**
+ * Generates a key pair for signing/verification purposes from a given 32-byte seed.
+ * You should not use this method unless for testing purposes; use `secret()` instead.
+ *
+ * @param {Uint8Array} seed
+ *   32-byte seed to generate the key from
+ * @returns {Uint8Array}
+ *   Secret key with the following additional methods:
+ *   - `pub(): PublicKey` returns Exonum-typed public key
+ *   - `rawPub(): Uint8Array` returns 32-byte raw public key buffer
+ */
+secret.fromSeed = function (seed) {
+  const { secretKey, publicKey } = nacl.sign.keyPair.fromSeed(seed)
+  const exonumPub = PublicKey.from(publicKey)
+
+  secretKey.pub = function () { return exonumPub }
+  secretKey.rawPub = function () { return publicKey.slice(0) }
+
   return secretKey
 }
 

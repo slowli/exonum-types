@@ -7,7 +7,8 @@ import nacl from 'tweetnacl'
 
 import fixedBuffer from '../src/lowlevel/fixedBuffer'
 import std from '../src/std'
-import { hash, sign, verify } from '../src/crypto'
+import { hash, sign, verify, secret } from '../src/crypto'
+import { isExonumObject } from '../src/lowlevel/common'
 
 const expect = chai
   .use(chaiBytes)
@@ -115,5 +116,31 @@ describe('verify', () => {
 
   it('should verify an Exonum object against Exonum signature and pubkey', () => {
     expect(verify(exMessage, Signature.from(signature), PublicKey.from(pk))).to.be.true()
+  })
+})
+
+describe('secret', () => {
+  it('should generate a keypair', () => {
+    const key = secret()
+    expect(key).to.be.a('uint8array')
+    expect(key.pub()).to.satisfy(isExonumObject)
+    expect(key.rawPub()).to.be.a('uint8array')
+  })
+
+  it('should generate a new key each time', () => {
+    const [keyA, keyB] = [secret(), secret()]
+    expect(keyA).to.not.equalBytes(keyB)
+    expect(keyA.pub().equals(keyB.pub())).to.be.false()
+  })
+})
+
+describe('secret.fromSeed', () => {
+  it('should work for 32-byte seeds', () => {
+    const h = hash(std.Str.from('correct horse battery staple'))
+    const key = secret.fromSeed(h)
+    expect(key).to.be.a('uint8array')
+    expect(key.pub()).to.satisfy(isExonumObject)
+    expect(key.rawPub()).to.be.a('uint8array')
+    expect(key.subarray(0, 32)).to.equalBytes(h)
   })
 })
