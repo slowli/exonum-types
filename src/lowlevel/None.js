@@ -8,7 +8,10 @@ export default class None extends createType({
   name: 'None',
   typeLength: 0
 }) {
-  constructor (any) {
+  constructor (nullOrUndefined) {
+    if (nullOrUndefined !== null && nullOrUndefined !== undefined) {
+      throw new Error('Invalid None initializer; null or undefined expected')
+    }
     super()
   }
 
