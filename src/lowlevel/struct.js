@@ -1,6 +1,6 @@
 import { List, Record } from 'immutable'
 
-import { createType, rawValue, rawOrSelf } from './common'
+import { createType, rawValue, rawOrSelf, isExonumObject } from './common'
 import initFactory from './initFactory'
 import { validateAndResolveFields } from './TypeResolver'
 import * as segments from './segments'
@@ -130,6 +130,15 @@ function struct (spec, resolver) {
         props.push((value === undefined) ? `?${spec[i].name}` : `${spec[i].name}: ${value}`)
       }
       return `{ ${props.join(', ')} }`
+    }
+
+    hashCode () {
+      return rawValue(this).hashCode()
+    }
+
+    equals (other) {
+      if (!isExonumObject(other)) return false
+      return rawValue(this).equals(rawValue(other))
     }
   }
 

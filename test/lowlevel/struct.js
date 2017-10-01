@@ -441,4 +441,86 @@ describe('struct', () => {
       expect(OtherType.equals(ComplexType)).to.be.true()
     })
   })
+
+  describe('hashCode', () => {
+    it('should return identical values for equal structs', () => {
+      const obj1 = Type.from([1, 2])
+      const obj2 = Type.from([1, 2])
+      expect(obj1.hashCode()).to.equal(obj2.hashCode())
+
+      const OtherType = struct([
+        { name: 'foo', type: std.Uint32 },
+        { name: 'bar', type: std.Uint8 }
+      ])
+
+      // Integer types are compared by value
+      expect(OtherType.from([1, 2]).hashCode()).to.equal(obj1.hashCode())
+    })
+  })
+
+  describe('equals', () => {
+    it('should make struct incomparable to simple JS objects', () => {
+      const obj1 = Type.from([1, 2])
+      const obj2 = { foo: 1, bar: 2 }
+      expect(obj1.equals(obj2)).to.be.false()
+    })
+
+    it('should structurally compare structs', () => {
+      const obj1 = Type.from([1, 2])
+      const obj2 = Type.from([1, 2])
+      expect(obj1.equals(obj2)).to.be.true()
+      expect(obj2.equals(obj1)).to.be.true()
+    })
+
+    it('should compare structs with fields having synonymous types', () => {
+      const StructWithPubkey = struct([
+        { name: 'val', type: std.PublicKey },
+        { name: 'comment', type: std.Str }
+      ])
+      const StructWithHash = struct([
+        { name: 'val', type: std.Hash },
+        { name: 'comment', type: std.Str }
+      ])
+
+      const json = {
+        val: '0000000000000000000000000000000000000000000000000000000000000000',
+        comment: 'testing equality'
+      }
+      const pkObj = StructWithPubkey.from(json)
+      const hashObj = StructWithHash.from(json)
+
+      expect(pkObj.equals(hashObj)).to.be.true()
+      expect(hashObj.equals(pkObj)).to.be.true()
+    })
+
+    it('should compare structs with fields having different types', () => {
+      const StructWithPubkey = struct([
+        { name: 'val', type: std.PublicKey },
+        { name: 'comment', type: std.Str }
+      ])
+      const StructWithStr = struct([
+        { name: 'val', type: std.Str },
+        { name: 'comment', type: std.Str }
+      ])
+
+      const json = {
+        val: '0000000000000000000000000000000000000000000000000000000000000000',
+        comment: 'testing equality'
+      }
+      const pkObj = StructWithPubkey.from(json)
+      const strObj = StructWithStr.from(json)
+
+      expect(pkObj.equals(strObj)).to.be.false()
+      expect(strObj.equals(pkObj)).to.be.false()
+    })
+
+    it('should compare embedded structs', () => {
+      const obj1 = ComplexType.from({ a: -1, b: { str: 'str', foo: 0 }, c: 'c' })
+      const obj2 = ComplexType.from([-1, ['str', { hex: '0' }], 'c'])
+
+      expect(obj1.hashCode()).to.equal(obj2.hashCode())
+      expect(obj1.equals(obj2)).to.be.true()
+      expect(obj2.equals(obj1)).to.be.true()
+    })
+  })
 })
