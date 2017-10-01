@@ -325,6 +325,36 @@ for (let typeName in typeDefs) {
 }
 
 describe('Integer', () => {
+  const invalidLengths = [
+    ['undefined', undefined],
+    ['object', {}],
+    ['string', 'abc'],
+    ['array', ['a', 5]],
+    ['function', () => {}]
+  ]
+
+  invalidLengths.forEach(({ 0: name, 1: arg }) => {
+    it(`should throw on invalid byte length (${name})`, () => {
+      expect(() => integer(arg)).to.throw(TypeError, /Invalid byte length/)
+      expect(() => uinteger(arg)).to.throw(TypeError, /Invalid byte length/)
+    })
+  })
+
+  it('should throw on zero byte length', () => {
+    expect(() => integer(0)).to.throw(RangeError)
+    expect(() => uinteger(0)).to.throw(RangeError)
+  })
+
+  it('should throw on negative byte length', () => {
+    expect(() => integer(-5)).to.throw(RangeError)
+    expect(() => uinteger(-5)).to.throw(RangeError)
+  })
+
+  it('should throw on very large byte length', () => {
+    expect(() => integer(10000000)).to.throw(RangeError)
+    expect(() => uinteger(10000000)).to.throw(RangeError)
+  })
+
   describe('valueOf', () => {
     it('should proxy integer value for comparisons', () => {
       const x = new integers.Int64(100)

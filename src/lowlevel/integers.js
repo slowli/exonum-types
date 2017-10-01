@@ -130,6 +130,23 @@ function $integer (byteLength, signed) {
   return SizedInteger
 }
 
+// Maximum supported byte length of integer types. Chosen according to the maximum supported message size;
+// the sane values are orders of magnitude lower.
+const MAX_BYTE_LENGTH = 2 * 1024 * 1024
+
+function prepareLength (length) {
+  length = +length
+  if (isNaN(length)) {
+    throw new TypeError('Invalid byte length of integer type; number expected')
+  }
+
+  if (length <= 0 || length > MAX_BYTE_LENGTH) {
+    throw new RangeError(`Unexpected byte length of integer type: ${length}; expected value between 1 and ${MAX_BYTE_LENGTH}`)
+  }
+
+  return length
+}
+
 /**
  * Instantiates a new signed integer type.
  *
@@ -141,7 +158,8 @@ function $integer (byteLength, signed) {
 export const integer = initFactory((byteLength) => {
   return $integer(byteLength, true)
 }, {
-  name: 'uinteger'
+  name: 'uinteger',
+  prepare: prepareLength
 })
 
 /**
@@ -155,5 +173,6 @@ export const integer = initFactory((byteLength) => {
 export const uinteger = initFactory((byteLength) => {
   return $integer(byteLength, false)
 }, {
-  name: 'integer'
+  name: 'integer',
+  prepare: prepareLength
 })
