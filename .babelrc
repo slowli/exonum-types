@@ -1,9 +1,16 @@
 {
-  "presets": ["es2015"],
   "comments": false,
   "env": {
+    "development": {
+      "presets": ["es2015"]
+    },
     "test": {
+      "presets": ["es2015"],
       "plugins": ["istanbul"]
+    },
+    "rollup": {
+      "presets": [["es2015", { "modules": false }]],
+      "plugins": ["external-helpers"]
     }
   }
 }
