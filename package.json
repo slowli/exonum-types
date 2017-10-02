@@ -2,6 +2,16 @@
   "name": "exonum-types",
   "version": "0.0.0",
   "description": "Exonum type system for JavaScript",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slowli/exonum-types.git"
+  },
+  "bugs": {
+    "url": "https://github.com/slowli/exonum-types/issues"
+  },
+  "engines": {
+    "node": ">=4"
+  },
   "main": "dist/exonum-types.js",
   "files": [
     "dist"
