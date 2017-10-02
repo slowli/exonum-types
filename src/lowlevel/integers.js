@@ -158,7 +158,7 @@ function prepareLength (length) {
 export const integer = initFactory((byteLength) => {
   return $integer(byteLength, true)
 }, {
-  name: 'uinteger',
+  name: 'integer',
   prepare: prepareLength
 })
 
@@ -173,6 +173,6 @@ export const integer = initFactory((byteLength) => {
 export const uinteger = initFactory((byteLength) => {
   return $integer(byteLength, false)
 }, {
-  name: 'integer',
+  name: 'uinteger',
   prepare: prepareLength
 })
