@@ -1,0 +1,27 @@
+{
+  "name": "exonum-types",
+  "version": "0.0.0",
+  "description": "Exonum type system for JavaScript",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slowli/exonum-types.git"
+  },
+  "bugs": {
+    "url": "https://github.com/slowli/exonum-types/issues"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "main": "dist/exonum-types.js",
+  "files": [
+    "dist"
+  ],
+  "author": "Exonum Team <exonum@bitury.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "big-integer": "^1.6.25",
+    "immutable": "^3.8.1",
+    "sha.js": "^2.4.8",
+    "tweetnacl": "^1.0.0"
+  }
+}
