@@ -8,9 +8,10 @@
 .vscode
 *.iml
 
+# Project-specific files
 .nyc_output
 node_modules
 npm-debug.log
 coverage
 dist
-lib
+npm
