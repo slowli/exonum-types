@@ -30,3 +30,13 @@ jobs:
       env: TESTSUITE=cover
     - node_js: 8
       env: TESTSUITE=lint
+    - stage: deploy
+      node_js: 8
+      script: skip
+      deploy:
+        - provider: script
+          script: npm run git-publish
+          skip_cleanup: true
+          on:
+            branch: master
+            repo: slowli/exonum-types
