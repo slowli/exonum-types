@@ -17,6 +17,10 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
+function brainwallet (phrase) {
+  return crypto.secret.fromSeed(crypto.hash(types.Str.from(phrase)))
+}
+
 describe('Message', () => {
   const TxTransfer = types.resolve({
     message: {
@@ -69,8 +73,8 @@ describe('Message', () => {
     }
   })
 
-  const aliceKey = crypto.secret()
-  const bobKey = crypto.secret()
+  const aliceKey = brainwallet('correct horse battery staple')
+  const bobKey = brainwallet('Bob!')
 
   describe('constructor', () => {
     it('should construct a message', () => {
