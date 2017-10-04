@@ -375,10 +375,11 @@ describe('TypeResolver', () => {
     }])
 
     expect(resolver.factories.has('list')).to.be.true()
+    expect(resolver.factories.get('list').typeName(Str)).to.equal('list<Str>')
 
     const StrList = resolver.resolve('StrList')
     expect(StrList).to.satisfy(isExonumType)
-    expect(StrList.inspect()).to.equal('(None | [Str, list<Str>])')
+    expect(StrList.inspect()).to.equal('list<Str>')
 
     expect(new StrList(['foo', ['bar', null]]).toJSON()).to.deep.equal({
       head: 'foo',
@@ -395,7 +396,7 @@ describe('TypeResolver', () => {
     })
 
     expect(StructList).to.satisfy(isExonumType)
-    expect(StructList.inspect()).to.equal('(None | [[Uint32, Uint32], list<[Uint32, Uint32]>])')
+    expect(StructList.inspect()).to.equal('list<[Uint32, Uint32]>')
 
     // Check caching
     expect(resolver.resolve({ list: Str })).to.equal(StrList)
@@ -686,9 +687,12 @@ describe('TypeResolver', () => {
       }
     }])
 
+    expect(resolver.factories.get('Tuple').typeName({ U: Str, V: uinteger(1) }))
+      .to.equal('Tuple<Str, Uint8>')
+
     const SITuple = resolver.resolve({ Tuple: { U: Str, V: uinteger(1) } })
     expect(SITuple).to.satisfy(isExonumType)
-    expect(SITuple.inspect()).to.equal('[Str, Uint8]')
+    expect(SITuple.inspect()).to.equal('Tuple<Str, Uint8>')
 
     const tuple = SITuple.from([ 'foo', 4 ])
     expect(tuple.first).to.equal('foo')

@@ -19,8 +19,7 @@ function isBuffer (obj) {
  */
 function fixedBuffer (length) {
   class FixedBuffer extends createType({
-    typeLength: length,
-    name: `Buffer<${length}>`
+    typeLength: length
   }) {
     /**
      * @param {String | Array<number> | Uint8Array | FixedBuffer} obj
@@ -114,7 +113,7 @@ function fixedBuffer (length) {
 const MAX_BUFFER_LENGTH = 2 * 1024 * 1024
 
 export default initFactory(fixedBuffer, {
-  name: 'buffer',
+  name: 'Buffer',
   argumentMeta: 'size',
 
   prepare (length) {

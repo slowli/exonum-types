@@ -36,11 +36,11 @@ const DUMMY_RESOLVER = dummyResolver()
  * @returns {(any, ?TypeResolver) => ExonumType} initialized factory
  */
 export default function initFactory (factory, {
-  name,
+  name = factory.name,
   argumentMeta = 'argument',
   prepare = (arg, resolver) => arg,
   typeTag = (arg) => arg,
-  typeName = (arg) => `${name}<?>`
+  typeName = (arg) => `${name}<${arg}>`
 } = {}) {
   if (typeof argumentMeta === 'string') {
     const prop = argumentMeta
@@ -77,6 +77,14 @@ export default function initFactory (factory, {
             factory: memoizedFactory,
             factoryName: name
           }, argumentMeta(arg))
+        }
+      })
+
+      Object.defineProperty(type, 'toString', {
+        enumerable: false,
+        configurable: true,
+        value: function () {
+          return typeName(arg)
         }
       })
 

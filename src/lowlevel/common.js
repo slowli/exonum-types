@@ -140,7 +140,7 @@ export function createType ({
   typeLength = undefined,
   proxiedMethods = [],
   kind = 'type'
-}) {
+} = {}) {
   class ExonumType {
     static inspect () {
       return this.toString()
