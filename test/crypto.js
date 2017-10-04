@@ -71,11 +71,13 @@ describe('hash', () => {
   })
 
   it('should fail on invalid argument', () => {
-    expect(() => hash({ foo: 'bar' })).to.throw(/invalid argument/i)
+    expect(() => hash({ foo: 'bar' })).to.throw(/unexpected argument/i)
+    expect(() => hash([1, 2, 3, 4, 5])).to.throw(/unexpected argument/i)
+    expect(() => hash('abcdef')).to.throw(/unexpected argument/i)
   })
 
   it('should fail on a combination of valid and invalid arguments', () => {
-    expect(() => hash(new Uint8Array(8), { foo: 'bar' })).to.throw(/invalid argument/i)
+    expect(() => hash(new Uint8Array(8), { foo: 'bar' })).to.throw(/unexpected argument/i)
   })
 })
 
