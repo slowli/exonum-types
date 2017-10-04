@@ -133,7 +133,17 @@ export default class TypeResolver {
         throw new Error(`Unknown factory: ${key}`)
       }
 
-      return factory(spec[key], this)
+      if (!this._pendingTypes) {
+        // Just started type resolution. Create a slot for pending types and safely
+        // clean it up afterwards
+        try {
+          return factory(spec[key], this)
+        } finally {
+          delete this._pendingTypes
+        }
+      } else {
+        return factory(spec[key], this)
+      }
     } else {
       throw new Error('Invalid type specification')
     }
