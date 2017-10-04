@@ -568,7 +568,15 @@ var TypeResolver = function () {
         if (!factory) {
           throw new Error('Unknown factory: ' + key);
         }
-        return factory(spec[key], this);
+        if (!this._pendingTypes) {
+          try {
+            return factory(spec[key], this);
+          } finally {
+            delete this._pendingTypes;
+          }
+        } else {
+          return factory(spec[key], this);
+        }
       } else {
         throw new Error('Invalid type specification');
       }
@@ -1883,6 +1891,7 @@ function message(_ref, resolver) {
       protocolVersion = _ref.protocolVersion,
       serviceId = _ref.serviceId,
       messageId = _ref.messageId,
+      authorField = _ref.author,
       BodyType = _ref.body;
   var MessageHeader = resolver.resolve({
     struct: [{ name: 'networkId', type: 'Uint8' }, { name: 'protocolVersion', type: 'Uint8' }, { name: 'messageId', type: 'Uint16' }, { name: 'serviceId', type: 'Uint16' }, { name: 'payloadLength', type: 'Uint32' }]
@@ -1890,16 +1899,6 @@ function message(_ref, resolver) {
   var headLength = MessageHeader.typeLength();
   var Signature = resolver.resolve('Signature');
   var sigLength = Signature.typeLength();
-  var authorField = void 0;
-  if (BodyType.meta().factoryName === 'struct') {
-    var candidates = BodyType.meta().fields.filter(function (_ref2) {
-      var author = _ref2.author;
-      return author === true;
-    });
-    if (candidates.length === 1) {
-      authorField = candidates[0].name;
-    }
-  }
   var MessageType = function (_resolver$resolve) {
     inherits(MessageType, _resolver$resolve);
     createClass(MessageType, null, [{
@@ -1913,10 +1912,10 @@ function message(_ref, resolver) {
         return new this({ body: body });
       }
     }]);
-    function MessageType(_ref3) {
-      var body = _ref3.body,
-          _ref3$signature = _ref3.signature,
-          signature = _ref3$signature === undefined ? Signature.ZEROS : _ref3$signature;
+    function MessageType(_ref2) {
+      var body = _ref2.body,
+          _ref2$signature = _ref2.signature,
+          signature = _ref2$signature === undefined ? Signature.ZEROS : _ref2$signature;
       classCallCheck(this, MessageType);
       return possibleConstructorReturn(this, (MessageType.__proto__ || Object.getPrototypeOf(MessageType)).call(this, {
         networkId: networkId,
@@ -2007,20 +2006,22 @@ var message$1 = initFactory(message, {
   argumentMeta: function argumentMeta(spec) {
     return Object.assign({}, spec);
   },
-  prepare: function prepare(_ref4, resolver) {
-    var _ref4$networkId = _ref4.networkId,
-        networkId = _ref4$networkId === undefined ? DEFAULT_NETWORK_ID : _ref4$networkId,
-        _ref4$protocolVersion = _ref4.protocolVersion,
-        protocolVersion = _ref4$protocolVersion === undefined ? DEFAULT_PROTO_VER : _ref4$protocolVersion,
-        serviceId = _ref4.serviceId,
-        messageId = _ref4.messageId,
-        body = _ref4.body;
+  prepare: function prepare(_ref3, resolver) {
+    var _ref3$networkId = _ref3.networkId,
+        networkId = _ref3$networkId === undefined ? DEFAULT_NETWORK_ID : _ref3$networkId,
+        _ref3$protocolVersion = _ref3.protocolVersion,
+        protocolVersion = _ref3$protocolVersion === undefined ? DEFAULT_PROTO_VER : _ref3$protocolVersion,
+        serviceId = _ref3.serviceId,
+        messageId = _ref3.messageId,
+        author = _ref3.author,
+        body = _ref3.body;
     body = Array.isArray(body) ? resolver.resolve({ struct: body }) : resolver.resolve(body);
     return {
       networkId: networkId,
       protocolVersion: protocolVersion,
       serviceId: serviceId,
       messageId: messageId,
+      author: author,
       body: body
     };
   }
