@@ -104,7 +104,7 @@ describe('mapView', () => {
       })
 
       it('should calculate correct root hash', () => {
-        expect(map.rootHash()).to.equalBytes(expected.rootHash)
+        expect(map.hash()).to.equalBytes(expected.rootHash)
       })
 
       it('should report visible keys as potential', () => {

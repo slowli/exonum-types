@@ -195,7 +195,7 @@ function mapView (ValType, resolver) {
       super({ root, map: OrderedMap(mapEntries) })
     }
 
-    rootHash () {
+    hash () {
       const root = rawValue(this).root
       return root.match({
         empty: () => new Uint8Array(32),

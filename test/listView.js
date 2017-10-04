@@ -53,7 +53,7 @@ describe('listView', () => {
       }
 
       it('should calculate correct root hash', () => {
-        expect(lst.rootHash()).to.equalBytes(expected.rootHash)
+        expect(lst.hash()).to.equalBytes(expected.rootHash)
       })
     })
   }

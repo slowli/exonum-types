@@ -96,7 +96,7 @@ function listView (ValType, resolver) {
       super({ map, root, depth })
     }
 
-    rootHash () {
+    hash () {
       return treeHash(rawValue(this).root)
     }
 
