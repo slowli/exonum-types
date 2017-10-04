@@ -17,13 +17,18 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
+function brainwallet (phrase) {
+  return crypto.secret.fromSeed(crypto.hash(types.Str.from(phrase)))
+}
+
 describe('Message', () => {
   const TxTransfer = types.resolve({
     message: {
       serviceId: 1,
       messageId: 128,
+      author: 'from',
       body: [
-        { name: 'from', type: 'PublicKey', author: true },
+        { name: 'from', type: 'PublicKey' },
         { name: 'to', type: 'PublicKey' },
         { name: 'amount', type: 'Uint64' }
       ]
@@ -34,8 +39,9 @@ describe('Message', () => {
     message: {
       serviceId: 1,
       messageId: 129,
+      author: 'from',
       body: [
-        { name: 'from', type: 'PublicKey', author: true },
+        { name: 'from', type: 'PublicKey' },
         { name: 'name', type: 'Str' }
       ]
     }
@@ -69,8 +75,8 @@ describe('Message', () => {
     }
   })
 
-  const aliceKey = crypto.secret()
-  const bobKey = crypto.secret()
+  const aliceKey = brainwallet('correct horse battery staple')
+  const bobKey = brainwallet('Bob!')
 
   describe('constructor', () => {
     it('should construct a message', () => {
@@ -319,6 +325,24 @@ describe('Message', () => {
           }
         }
       })
+    })
+  })
+
+  describe('author', () => {
+    it('should return message author if defined in spec', () => {
+      const msg = new TxTransfer({
+        body: {
+          from: aliceKey.pub(),
+          to: bobKey.pub(),
+          amount: 10000
+        }
+      })
+      expect(msg.author()).to.equalBytes(aliceKey.rawPub())
+    })
+
+    it('should return undefined if not defined in spec', () => {
+      const msg = NonStructMessage.fromBody('ffffffff')
+      expect(msg.author()).to.be.undefined()
     })
   })
 

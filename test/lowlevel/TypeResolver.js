@@ -121,6 +121,39 @@ describe('TypeResolver', () => {
     expect(() => Uint8.from(-1)).to.throw(/range/i)
   })
 
+  it('should erase pending types on add() invocation', () => {
+    const newResolver = resolver
+      .addFactories({ integer, uinteger })
+      .add({ name: 'Uint8', uinteger: 1 })
+
+    expect(resolver._pendingTypes).to.be.undefined()
+    expect(newResolver._pendingTypes).to.be.undefined()
+  })
+
+  it('should erase pending types on resolve() invocation', () => {
+    resolver = resolver
+      .addFactories({ integer, uinteger })
+      .add({ name: 'Uint8', uinteger: 1 })
+
+    const Uint8 = resolver.resolve('Uint8')
+    expect(Uint8).to.satisfy(isExonumType)
+
+    expect(resolver._pendingTypes).to.be.undefined()
+  })
+
+  it('should erase pending types on complex resolve() invocation', () => {
+    resolver = resolver.addFactories(FACTORIES)
+    const Type = resolver.resolve({
+      struct: [
+        { name: 'foo', type: { uinteger: 2 } },
+        { name: 'bar', type: { fixedBuffer: 6 } }
+      ]
+    })
+    expect(Type).to.satisfy(isExonumType)
+    console.log(resolver._pendingTypes)
+    expect(resolver._pendingTypes).to.be.undefined()
+  })
+
   it('should create multiple integer types', () => {
     resolver = resolver.addFactories({ integer, uinteger })
       .add([
@@ -320,10 +353,12 @@ describe('TypeResolver', () => {
   })
 
   it('should create a type factory from spec', () => {
-    resolver = resolver.addNativeType('Uint32', uinteger(4))
-      .addFactories(FACTORIES)
+    resolver = resolver.addNativeTypes({
+      Uint32: uinteger(4),
+      Str
+    }).addFactories(FACTORIES)
 
-    resolver = resolver.add({
+    resolver = resolver.add([{
       name: 'list',
       factory: {
         typeParams: [{ name: 'T', type: 'type' }],
@@ -334,11 +369,14 @@ describe('TypeResolver', () => {
           ]
         }
       }
-    })
+    }, {
+      name: 'StrList',
+      list: 'Str'
+    }])
 
     expect(resolver.factories.has('list')).to.be.true()
 
-    const StrList = resolver.resolve({ list: Str })
+    const StrList = resolver.resolve('StrList')
     expect(StrList).to.satisfy(isExonumType)
     expect(StrList.inspect()).to.equal('(None | [Str, list<Str>])')
 

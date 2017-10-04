@@ -17,6 +17,7 @@ function message ({
   protocolVersion,
   serviceId,
   messageId,
+  author: authorField,
   body: BodyType
 }, resolver) {
   const MessageHeader = resolver.resolve({
@@ -32,15 +33,6 @@ function message ({
 
   const Signature = resolver.resolve('Signature')
   const sigLength = Signature.typeLength()
-
-  let authorField
-  if (BodyType.meta().factoryName === 'struct') {
-    // Search the author field by the corresponding information in meta
-    const candidates = BodyType.meta().fields.filter(({ author }) => author === true)
-    if (candidates.length === 1) {
-      authorField = candidates[0].name
-    }
-  }
 
   class MessageType extends resolver.resolve({
     struct: [
@@ -108,8 +100,10 @@ function message ({
 
     /**
      * Retrieves the public key, against which the signature of the message will
-     * be checked. By default, it is defined as the field with the `"author"` metadata.
-     * If there are no or multiple such fields, `author()` always returns `undefined`.
+     * be checked. If the message declaration contains `author`, it is treated
+     * as the name of the field in the message body that should be accessed to get author.
+     * Otherwise, `author()` returns `undefined` and should be overridden in child
+     * classes.
      *
      * @returns {?PublicKey}
      */
@@ -167,6 +161,7 @@ export default initFactory(message, {
     protocolVersion = DEFAULT_PROTO_VER,
     serviceId,
     messageId,
+    author,
     body
   }, resolver) {
     // Allow to specify message body as a `struct` specification
@@ -179,6 +174,7 @@ export default initFactory(message, {
       protocolVersion,
       serviceId,
       messageId,
+      author,
       body
     }
   }
