@@ -93,5 +93,13 @@ export default function initFactory (factory, {
   }
 
   setKind(memoizedFactory, 'factory')
+  Object.defineProperties(memoizedFactory, {
+    name: { configurable: true, value: name },
+    prepare: { configurable: true, value: prepare },
+    argumentMeta: { configurable: true, value: argumentMeta },
+    typeTag: { configurable: true, value: typeTag },
+    typeName: { configurable: true, value: typeName }
+  })
+
   return memoizedFactory
 }
