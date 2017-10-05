@@ -1,75 +1,120 @@
-import { OrderedMap } from 'immutable'
+import { Map as ImmutableMap, OrderedMap } from 'immutable'
 
-import { memoize, rawValue, createType } from './lowlevel/common'
+import { rawValue, createType } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
 
-function parseTreeStructure (tree) {
-  const nodes = []
-
-  function pushNode (node, level, pos) {
-    node.level = level
-    node.pos = pos
-    nodes.push(node)
-  }
-
-  nodes.push(tree)
-  tree.level = 0
-  tree.pos = 0
-
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i]
-
-    node.match({
-      branch: ({left, right}) => {
-        pushNode(left, node.level + 1, 2 * node.pos)
-        pushNode(right, node.level + 1, 2 * node.pos + 1)
-      },
-      stub: (stub) => {
-        pushNode(stub, node.level + 1, 2 * node.pos)
+/**
+ * Processes the proof returning a map, in which hashes are split by their level.
+ *
+ * @param {List<{ level: Uint8, pos: Uint64, hash: Hash }>} proof
+ * @returns {OrderedMap<Uint8, OrderedMap<Uint64, Hash>>}
+ */
+function preprocessProof (proof) {
+  let map = ImmutableMap().withMutations(m => {
+    proof.forEach(({ level, pos, hash }) => {
+      if (!m.has(level)) {
+        m.set(level, ImmutableMap())
       }
+      const entry = ImmutableMap([[pos, hash]])
+      m.set(level, m.get(level).mergeWith(
+        () => { throw new Error(`Duplicate entry in proof: (${level}, ${pos})`) },
+        entry
+      ))
     })
-  }
+  })
 
-  const levels = nodes.map(node => node.level)
-  const depth = Math.max.apply(null, levels)
-  const values = nodes.filter(node => node.type === 'val')
-
-  // All values must be on the same level
-  // All hashes must not exceed this level
-  if (!values.every(node => node.level === depth)) {
-    throw new Error('Invalid value / hash height')
-  }
-
-  // All `stub`s must be right children of their parents
-  if (
-    nodes.filter(node => node.type === 'branch')
-      .some(({ branch }) => branch.left.type === 'stub')
-  ) {
-    throw new TypeError('Stub node being the left child of parent')
-  }
-
-  return { depth, nodes, values }
+  return map.sortBy((_, level) => level)
+    .map(level => level.sortBy((_, pos) => pos))
 }
 
 /**
- * Recursively calculates the hash of the entire `ListView`.
- *
- * @param {ListViewNode<any>} node
- * @returns {Hash}
+ * @param {OrderedMap<Uint8, OrderedMap<Uint64, Hash>>} proof
+ * @param {Map<Uint64, ExonumType>} entries
  */
-function treeHash (node) {
-  return node.match({
-    hash: (h) => h,
-    val: (val) => hash(val),
-    branch: ({ left, right }) => hash(treeHash(left), treeHash(right)),
-    stub: (stub) => hash(treeHash(stub))
-  })
+function treeHash (proof, entries, hashFn = hash) {
+  const hashedEntries = entries.map(value => hashFn(value))
+  let level = hashedEntries.mergeWith(
+    (oldVal, newVal, pos) => { throw new Error(`Invalid proof: redefined entry (0, ${pos})`) },
+    proof.get(0) || OrderedMap()
+  )
+
+  // Maximum index allowed on the level. Initially set to `+Infinity`; defined
+  // once there is an odd number of elements on the level
+  let maxPos = +Infinity
+  // 0-based index of the current level
+  let levelIdx = 0
+
+  while (level.count() > 1 || !level.has(0)) {
+    level = level.sortBy((_, pos) => pos)
+
+    const actualMaxPos = level.keySeq().last()
+    if (actualMaxPos > maxPos) {
+      throw new Error(`Invalid proof: encountered element at position ${actualMaxPos} on level ${levelIdx}, whereas <=${maxPos} was expected`)
+    }
+
+    const nextLevel = OrderedMap().withMutations(nextLevel => {
+      let index = 0 // index of the element on the level being iterated
+      let prevHash, prevPos // properties of the previous iterated element
+
+      level.forEach((hash, pos) => {
+        if (index % 2 === 1) {
+          if (prevPos !== pos - 1) {
+            throw new Error(`Invalid proof: missing entry (${levelIdx}, ${pos - 1})`)
+          }
+
+          nextLevel.set(prevPos / 2, hashFn(prevHash, hash))
+        } else {
+          // The odd position / index; it will be grabbed by the next element,
+          // unless it its the last element, in which case it needs to be treated specially.
+
+          if (pos % 2 !== 0) {
+            // Here `pos` is odd, and the entry at `pos - 1` should be (but is not) present in `level`
+            // in order to hash it together with the entry at `pos`.
+            //
+            // Indeed, there are 2 cases:
+            //
+            // - This is the first entry at this level. Obviously, in this case the entry `pos - 1`
+            //   is missing.
+            // - This is not the first entry. The previous entry has an odd position
+            //   (provable by induction), so it cannot have position `pos - 1`, which is odd. q.e.d.
+            throw new Error(`Invalid proof: missing entry (${levelIdx}, ${pos - 1})`)
+          }
+
+          if (index === level.count() - 1) {
+            // Special case: a single element at the end of the level. We hash the element separately
+            // and set `maxPos`
+            nextLevel.set(pos / 2, hashFn(hash))
+            maxPos = pos // will be updated at the end of the loop
+          }
+        }
+
+        prevHash = hash
+        prevPos = pos
+        index++
+      })
+    })
+
+    levelIdx++
+    level = nextLevel.mergeWith(
+      (oldVal, newVal, pos) => { throw new Error(`Invalid proof: redefined entry (${levelIdx}, ${pos})`) },
+      proof.get(levelIdx) || OrderedMap())
+    maxPos = Math.floor(maxPos / 2)
+  }
+
+  // The maximum known level of the tree
+  const maxLevel = proof.keySeq().last()
+  if (maxLevel >= levelIdx) {
+    throw new Error(`Invalid proof: proof entry at level ${maxLevel}, when the tree has root on level ${levelIdx}`)
+  }
+
+  return level.get(0)
 }
 
 // Methods proxied from `OrderedMap` to `ListView`
 const PROXIED_METHODS = [
   'get',
+  'has',
   'count',
   'keys',
   'values',
@@ -79,33 +124,37 @@ const PROXIED_METHODS = [
   'entrySeq'
 ]
 
-function listView (ValType, resolver) {
-  const ProofNode = resolver.resolve({ ListProofNode: ValType })
+function listView (ElementType, resolver) {
+  const ListViewBase = resolver.resolve({ $ListViewBase: ElementType })
 
   class ListView extends createType({
-    name: `ListView<${ValType.inspect()}>`
+    name: `ListView<${ElementType.inspect()}>`
   }) {
     constructor (obj) {
-      const root = ProofNode.from(obj)
-      const { depth, values } = parseTreeStructure(root)
+      const parsed = ListViewBase.from(obj)
+      const entries = parsed.entries.toList()
+      const proof = preprocessProof(parsed.proof.toList())
 
-      // Guaranteed to be sorted by ascending `node.pos`
-      // XXX: This loses original Exonum-typed values. Suppose this is OK?
-      const map = OrderedMap(values.map(node => [node.pos, node.val]))
+      const map = OrderedMap(entries.map(entry => [entry.key, entry.value]))
+      if (map.count() !== parsed.entries.count()) {
+        throw new Error('Invalid list view: duplicate key(s)')
+      }
 
-      super({ map, root, depth })
+      const originalMap = OrderedMap(entries.map(
+        entry => [entry.key, entry.getOriginal('value')]))
+
+      super({ map, originalMap }, null)
+      rawValue(this).hash = treeHash(proof, originalMap)
+    }
+
+    getOriginal (index) {
+      return rawValue(this).originalMap.get(index)
     }
 
     hash () {
-      return treeHash(rawValue(this).root)
-    }
-
-    depth () {
-      return rawValue(this).depth
+      return rawValue(this).hash
     }
   }
-
-  ListView.prototype.rootHash = memoize(ListView.prototype.rootHash)
 
   PROXIED_METHODS.forEach(methodName => {
     ListView.prototype[methodName] = function () {
@@ -118,8 +167,8 @@ function listView (ValType, resolver) {
 }
 
 export default initFactory(listView, {
-  name: 'listView',
-  argumentMeta: 'value',
+  name: 'ListView',
+  argumentMeta: 'element',
 
   prepare (Type, resolver) {
     return resolver.resolve(Type)

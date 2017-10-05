@@ -50,22 +50,43 @@
   },
 
   {
-    "name": "ListProofNode",
+    "name": "TableEntry",
     "factory": {
-      "typeParams": [{ "name": "T" }],
-      "union": [
+      "typeParams": [
+        { "name": "K" }, { "name": "V" }
+      ],
+      "struct": [
+        { "name": "key", "type": { "typeParam": "K" } },
+        { "name": "value", "type": { "typeParam": "V" } }
+      ]
+    }
+  },
+
+  {
+    "name": "$ListProofEntry",
+    "struct": [
+      { "name": "level", "type": "Uint8" },
+      { "name": "pos", "type": "Uint64" },
+      { "name": "hash", "type": "Hash" }
+    ]
+  },
+
+  {
+    "name": "$ListViewBase",
+    "factory": {
+      "typeParams": [
+        { "name": "E" }
+      ],
+      "struct": [
         {
-          "name": "branch",
+          "name": "entries",
           "type": {
-            "struct": [
-              { "name": "left", "type": { "ListProofNode": { "typeParam": "T" } } },
-              { "name": "right", "type": { "ListProofNode": { "typeParam": "T" } } }
-            ]
+            "array": {
+              "TableEntry": { "K": "Uint64", "V": { "typeParam": "E" } }
+            }
           }
         },
-        { "name": "stub", "type": { "ListProofNode": { "typeParam": "T" } } },
-        { "name": "hash", "type": "Hash" },
-        { "name": "val", "type": { "typeParam": "T" } }
+        { "name": "proof", "type": { "array": "$ListProofEntry" } }
       ]
     }
   },

@@ -11,7 +11,7 @@ import option from './lowlevel/option'
 import struct from './lowlevel/struct'
 import union from './lowlevel/union'
 import message from './message'
-import listView from './listView'
+import ListView from './listView'
 import mapView from './mapView'
 
 // Resolver and type extensions
@@ -34,7 +34,7 @@ export const resolver = new TypeResolver()
     union,
     enum: union,
     message,
-    listView,
+    ListView,
     mapView
   })
   .add(rawDefinitions)
