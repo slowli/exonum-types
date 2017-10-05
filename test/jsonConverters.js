@@ -3,63 +3,11 @@
 import chai from 'chai'
 import dirtyChai from 'dirty-chai'
 
-import { convertListJSON, convertMapJSON } from '../src/jsonConverters'
+import { convertMapJSON } from '../src/jsonConverters'
 
 const expect = chai
   .use(dirtyChai)
   .expect
-
-describe('convertListJSON', () => {
-  it('should add tags to JSON', () => {
-    const json = {
-      left: '0000000000000000000000000000000000000000000000000000000000000000',
-      right: {
-        left: {
-          left: '0000000000000000000000000000000000000000000000000000000000000000',
-          right: { val: [1, 2, 3] }
-        },
-        right: {
-          left: { val: [4, 5, 6] }
-        }
-      }
-    }
-
-    expect(convertListJSON(json)).to.deep.equal({
-      branch: {
-        left: { hash: '0000000000000000000000000000000000000000000000000000000000000000' },
-        right: {
-          branch: {
-            left: {
-              branch: {
-                left: { hash: '0000000000000000000000000000000000000000000000000000000000000000' },
-                right: { val: [1, 2, 3] }
-              }
-            },
-            right: {
-              stub: { val: [4, 5, 6] }
-            }
-          }
-        }
-      }
-    })
-  })
-
-  it('should throw on unparseable JSON', () => {
-    const json = {
-      right: {
-        left: {
-          left: '0000000000000000000000000000000000000000000000000000000000000000',
-          right: { val: [1, 2, 3] }
-        },
-        right: {
-          left: { val: [4, 5, 6] }
-        }
-      }
-    }
-
-    expect(() => convertListJSON(json)).to.throw('Invalid list JSON')
-  })
-})
 
 describe('convertMapJSON', () => {
   it('should throw if supplied with non-object', () => {

@@ -2,41 +2,6 @@
  * Tags the variants in JSON represenation of `ListView` based on its structure.
  * The JSON is transformed in place and then returned.
  */
-export function convertListJSON (json) {
-  function convertChild (json, child) {
-    if (typeof json[child] === 'string') {
-      json[child] = { hash: json[child] }
-    } else {
-      convertListJSON(json[child])
-    }
-  }
-
-  if (('left' in json) && ('right' in json)) {
-    json.branch = {
-      left: json.left,
-      right: json.right
-    }
-    delete json.left
-    delete json.right
-    convertChild(json.branch, 'left')
-    convertChild(json.branch, 'right')
-  } else if ('left' in json) {
-    json.stub = json.left
-    delete json.left
-    convertChild(json, 'stub')
-  } else if ('val' in json) {
-    // value
-  } else {
-    throw new TypeError('Invalid list JSON')
-  }
-
-  return json
-}
-
-/**
- * Tags the variants in JSON represenation of `ListView` based on its structure.
- * The JSON is transformed in place and then returned.
- */
 function convertTreeJSON (json) {
   function convertChild (json, child) {
     if (typeof json[child] === 'string') {
