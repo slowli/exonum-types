@@ -57,7 +57,8 @@ export default function initFactory (factory, {
     if (resolver._hasType(fullTag)) {
       return resolver._getType(fullTag)
     } else {
-      resolver._addPendingType(fullTag, typeName(arg))
+      const cachedTypeName = typeName(arg)
+      resolver._addPendingType(fullTag, cachedTypeName)
       const type = factory(arg, resolver)
       resolver._resolvePendingType(fullTag, type)
 
@@ -84,7 +85,7 @@ export default function initFactory (factory, {
         enumerable: false,
         configurable: true,
         value: function () {
-          return typeName(arg)
+          return cachedTypeName
         }
       })
 
