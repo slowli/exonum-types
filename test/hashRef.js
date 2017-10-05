@@ -100,12 +100,13 @@ describe('hashRef', () => {
     })
 
     it('should use value().hash() if it is present', () => {
-      const ListViewRef = hashRef({ listView: { buffer: 8 } }, std.resolver)
+      const ListViewRef = hashRef({ ListView: { buffer: 8 } }, std.resolver)
       const lst = ListViewRef.from({
-        branch: {
-          left: { val: '0000000000000000' },
-          right: { val: '0101010101010101' }
-        }
+        entries: [
+          { key: '0', value: '0000000000000000' },
+          { key: '1', value: '0101010101010101' }
+        ],
+        proof: []
       })
 
       // check that the list is constructed correctly
@@ -158,7 +159,7 @@ describe('hashRef', () => {
     })
 
     it('should serialize using value().hash() if it is present', () => {
-      const ListViewRef = hashRef({ listView: { buffer: 8 } }, std.resolver)
+      const ListViewRef = hashRef({ ListView: { buffer: 8 } }, std.resolver)
       const StructWithList = std.struct([
         { name: 'name', type: 'Str' },
         { name: 'list', type: ListViewRef },
@@ -168,10 +169,11 @@ describe('hashRef', () => {
       const rec = StructWithList.from({
         name: 'Alice',
         list: {
-          branch: {
-            left: { val: '0102030405060708' },
-            right: { val: '0807060504030201' }
-          }
+          entries: [
+            { key: '0', value: '0102030405060708' },
+            { key: '1', value: '0807060504030201' }
+          ],
+          proof: []
         },
         age: 30
       })
