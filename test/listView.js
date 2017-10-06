@@ -61,8 +61,8 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 1, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' },
-          { level: 1, pos: 1, hash: '1000000000000000000000000000000000000000000000000000000000000000' }
+          { height: 1, index: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' },
+          { height: 1, index: 1, hash: '1000000000000000000000000000000000000000000000000000000000000000' }
         ]
       })).to.throw(/duplicate entry in proof/i)
     })
@@ -74,7 +74,7 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 1, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
+          { height: 1, index: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
       })).to.throw('redefined entry (1, 1)')
 
@@ -84,7 +84,7 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 2, pos: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
+          { height: 2, index: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
       })).to.throw('redefined entry (2, 0)')
 
@@ -94,9 +94,9 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 10, pos: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
+          { height: 10, index: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw('proof entry at level 10')
+      })).to.throw('proof entry at height 10')
     })
 
     it('should not parse list view with insufficient information to construct root hash', () => {
@@ -138,8 +138,8 @@ describe('ListView', () => {
           { key: '4', value: 'bar' }
         ],
         proof: [
-          { level: 3, pos: 0, hash: hash(new Uint8Array(10)) },
-          { level: 3, pos: 2, hash: hash(new Uint8Array(20)) }
+          { height: 3, index: 0, hash: hash(new Uint8Array(10)) },
+          { height: 3, index: 2, hash: hash(new Uint8Array(20)) }
         ]
       })).to.throw(/encountered element at position/)
 
@@ -149,8 +149,8 @@ describe('ListView', () => {
           { key: '5', value: 'foo' }
         ],
         proof: [
-          { level: 3, pos: 0, hash: hash(new Uint8Array(10)) },
-          { level: 3, pos: 3, hash: hash(new Uint8Array(20)) }
+          { height: 3, index: 0, hash: hash(new Uint8Array(10)) },
+          { height: 3, index: 3, hash: hash(new Uint8Array(20)) }
         ]
       })).to.throw(/encountered element at position/)
     })
@@ -209,8 +209,8 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 1, pos: 0, hash: hash(types.Str.from('foo')) },
-          { level: 1, pos: 3, hash: hash(types.Str.from('foobar')) }
+          { height: 1, index: 0, hash: hash(types.Str.from('foo')) },
+          { height: 1, index: 3, hash: hash(types.Str.from('foobar')) }
         ]
       })
 
@@ -247,7 +247,7 @@ describe('ListView', () => {
           { key: '4', value: 'item4' }
         ],
         proof: [
-          { level: 3, pos: 0, hash: h1to4 }
+          { height: 3, index: 0, hash: h1to4 }
         ]
       })
 
@@ -303,5 +303,5 @@ describe('ListView', () => {
   testValidSample('valid-full')
   testValidSample('valid-many-elements')
 
-  testInvalidSample('invalid-stub-placement', /proof entry at level/i)
+  testInvalidSample('invalid-stub-placement', /proof entry at height/i)
 })

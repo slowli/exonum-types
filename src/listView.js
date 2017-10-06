@@ -1,4 +1,4 @@
-import { Map as ImmutableMap, OrderedMap } from 'immutable'
+import { Map as ImmutableMap, OrderedMap, Seq } from 'immutable'
 
 import { rawValue, createType } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
@@ -7,25 +7,26 @@ import { hash } from './crypto'
 /**
  * Processes the proof returning a map, in which hashes are split by their level.
  *
- * @param {List<{ level: Uint8, pos: Uint64, hash: Hash }>} proof
+ * @param {List<{ level: Uint8, index: Uint64, hash: Hash }>} proof
  * @returns {OrderedMap<Uint8, OrderedMap<Uint64, Hash>>}
  */
 function preprocessProof (proof) {
   let map = ImmutableMap().withMutations(m => {
-    proof.forEach(({ level, pos, hash }) => {
-      if (!m.has(level)) {
-        m.set(level, ImmutableMap())
+    proof.forEach(({ height, index, hash }) => {
+      if (!m.has(height)) {
+        m.set(height, ImmutableMap())
       }
-      const entry = ImmutableMap([[pos, hash]])
-      m.set(level, m.get(level).mergeWith(
-        () => { throw new Error(`Duplicate entry in proof: (${level}, ${pos})`) },
+
+      const entry = ImmutableMap([[index, hash]])
+      m.set(height, m.get(height).mergeWith(
+        () => { throw new Error(`Duplicate entry in proof: (${height}, ${index})`) },
         entry
       ))
     })
   })
 
-  return map.sortBy((_, level) => level)
-    .map(level => level.sortBy((_, pos) => pos))
+  return map.sortBy((_, height) => height)
+    .map(level => level.sortBy((_, index) => index))
 }
 
 /**
@@ -35,77 +36,82 @@ function preprocessProof (proof) {
 function treeHash (proof, entries, hashFn = hash) {
   const hashedEntries = entries.map(value => hashFn(value))
   let level = hashedEntries.mergeWith(
-    (oldVal, newVal, pos) => { throw new Error(`Invalid proof: redefined entry (1, ${pos})`) },
+    (oldVal, newVal, index) => { throw new Error(`Invalid proof: redefined entry (1, ${index})`) },
     proof.get(1) || OrderedMap()
   )
 
   // Maximum index allowed on the level. Initially set to `+Infinity`; defined
   // once there is an odd number of elements on the level
-  let maxPos = +Infinity
-  // 1-based index of the current level
-  let levelIdx = 1
+  let maxIndex = +Infinity
+  // 1-based height of the current level of the tree
+  let height = 1
 
   while (level.count() > 1 || !level.has(0)) {
-    level = level.sortBy((_, pos) => pos)
+    level = level.sortBy((_, index) => index)
 
-    const actualMaxPos = level.keySeq().last()
-    if (actualMaxPos > maxPos) {
-      throw new Error(`Invalid proof: encountered element at position ${actualMaxPos} on level ${levelIdx}, whereas <=${maxPos} was expected`)
+    const actualMaxIndex = level.keySeq().last()
+    if (actualMaxIndex > maxIndex) {
+      throw new Error(`Invalid proof: encountered element at position ${actualMaxIndex} at height ${height}, whereas <=${maxIndex} was expected`)
     }
 
     const nextLevel = OrderedMap().withMutations(nextLevel => {
-      let index = 0 // index of the element on the level being iterated
-      let prevHash, prevPos // properties of the previous iterated element
+      // Construct pairs of elements
+      let pairs = level.count() > 1 ? (
+        // Somehow, this code does not work if `level` contains a single element
+        level.entrySeq()
+          .zip(level.entrySeq().skip(1))
+          .filter((_, index) => index % 2 === 0)
+      ) : Seq.Indexed()
 
-      level.forEach((hash, pos) => {
-        if (index % 2 === 1) {
-          if (prevPos !== pos - 1) {
-            throw new Error(`Invalid proof: missing entry (${levelIdx}, ${pos - 1})`)
-          }
+      // The last element may be needed to be added separately
+      if (level.count() % 2 === 1) {
+        // Array embedding is required for `concat()` to treat the inner array
+        //  as a single pair of elements, rather than an iterator of 2 elements
+        pairs = pairs.concat(Seq.Indexed.of([level.entrySeq().last(), undefined]))
+      }
 
-          nextLevel.set(prevPos / 2, hashFn(prevHash, hash))
-        } else {
-          // The odd position / index; it will be grabbed by the next element,
-          // unless it its the last element, in which case it needs to be treated specially.
-
-          if (pos % 2 !== 0) {
-            // Here `pos` is odd, and the entry at `pos - 1` should be (but is not) present in `level`
-            // in order to hash it together with the entry at `pos`.
-            //
-            // Indeed, there are 2 cases:
-            //
-            // - This is the first entry at this level. Obviously, in this case the entry `pos - 1`
-            //   is missing.
-            // - This is not the first entry. The previous entry has an odd position
-            //   (provable by induction), so it cannot have position `pos - 1`, which is odd. q.e.d.
-            throw new Error(`Invalid proof: missing entry (${levelIdx}, ${pos - 1})`)
-          }
-
-          if (index === level.count() - 1) {
-            // Special case: a single element at the end of the level. We hash the element separately
-            // and set `maxPos`
-            nextLevel.set(pos / 2, hashFn(hash))
-            maxPos = pos // will be updated at the end of the loop
-          }
+      pairs.forEach(({ 0: { 0: evenIndex, 1: evenHash }, 1: odd }) => {
+        if (evenIndex % 2 !== 0) {
+          // The entry at `evenIndex - 1` should be (but is not) present in `level`
+          // in order to hash it together with the current entry.
+          //
+          // Indeed, there are 2 possibilities:
+          //
+          // - This is the first entry at this level. Obviously, in this case the entry
+          //   `evenIndex - 1` is missing.
+          // - This is not the first entry. The previous entry has an odd index
+          //   (provable by induction), so it cannot have position `evenIndex - 1`,
+          //   which is even. q.e.d.
+          throw new Error(`Invalid proof: missing entry (${height}, ${evenIndex - 1})`)
         }
 
-        prevHash = hash
-        prevPos = pos
-        index++
+        if (odd !== undefined) {
+          const { 0: oddIndex, 1: oddHash } = odd
+
+          if (oddIndex !== evenIndex + 1) {
+            throw new Error(`Invalid proof: missing entry (${height}, ${oddIndex - 1})`)
+          }
+          nextLevel.set(evenIndex / 2, hashFn(evenHash, oddHash))
+        } else {
+          // Special case: a single element at the end of the level. We hash the element separately
+          // and set `maxIndex`
+          nextLevel.set(evenIndex / 2, hashFn(evenHash))
+          maxIndex = evenIndex // will be updated at the end of the loop
+        }
       })
     })
 
-    levelIdx++
+    height++
     level = nextLevel.mergeWith(
-      (oldVal, newVal, pos) => { throw new Error(`Invalid proof: redefined entry (${levelIdx}, ${pos})`) },
-      proof.get(levelIdx) || OrderedMap())
-    maxPos = Math.floor(maxPos / 2)
+      (oldVal, newVal, index) => { throw new Error(`Invalid proof: redefined entry (${height}, ${index})`) },
+      proof.get(height) || OrderedMap())
+    maxIndex = Math.floor(maxIndex / 2)
   }
 
   // The maximum known level of the tree
-  const maxLevel = proof.keySeq().last()
-  if (maxLevel >= levelIdx) {
-    throw new Error(`Invalid proof: proof entry at level ${maxLevel}, when the tree has root on level ${levelIdx}`)
+  const maxHeight = proof.keySeq().last()
+  if (maxHeight >= height) {
+    throw new Error(`Invalid proof: proof entry at height ${maxHeight}, when the tree has root at height ${height}`)
   }
 
   return level.get(0)

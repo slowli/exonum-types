@@ -65,8 +65,8 @@
   {
     "name": "$ListProofEntry",
     "struct": [
-      { "name": "level", "type": "Uint8" },
-      { "name": "pos", "type": "Uint64" },
+      { "name": "height", "type": "Uint8" },
+      { "name": "index", "type": "Uint64" },
       { "name": "hash", "type": "Hash" }
     ]
   },
