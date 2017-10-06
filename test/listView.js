@@ -55,6 +55,18 @@ describe('ListView', () => {
       })).to.throw(/duplicate key/i)
     })
 
+    it('should not parse list view with redefined proof entries', () => {
+      expect(() => StrListView.from({
+        entries: [
+          { key: '1', value: 'bar' }
+        ],
+        proof: [
+          { level: 0, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' },
+          { level: 0, pos: 1, hash: '1000000000000000000000000000000000000000000000000000000000000000' }
+        ]
+      })).to.throw(/duplicate entry in proof/i)
+    })
+
     it('should not parse list view with entries colliding with proof entries', () => {
       expect(() => StrListView.from({
         entries: [
@@ -94,6 +106,14 @@ describe('ListView', () => {
         ],
         proof: [ ]
       })).to.throw('missing entry (1, 0)')
+
+      expect(() => StrListView.from({
+        entries: [
+          { key: '0', value: 'foo' },
+          { key: '3', value: 'bar' }
+        ],
+        proof: [ ]
+      })).to.throw('missing entry (0, 2)')
 
       expect(() => StrListView.from({
         entries: [
