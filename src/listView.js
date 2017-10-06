@@ -35,15 +35,15 @@ function preprocessProof (proof) {
 function treeHash (proof, entries, hashFn = hash) {
   const hashedEntries = entries.map(value => hashFn(value))
   let level = hashedEntries.mergeWith(
-    (oldVal, newVal, pos) => { throw new Error(`Invalid proof: redefined entry (0, ${pos})`) },
-    proof.get(0) || OrderedMap()
+    (oldVal, newVal, pos) => { throw new Error(`Invalid proof: redefined entry (1, ${pos})`) },
+    proof.get(1) || OrderedMap()
   )
 
   // Maximum index allowed on the level. Initially set to `+Infinity`; defined
   // once there is an odd number of elements on the level
   let maxPos = +Infinity
-  // 0-based index of the current level
-  let levelIdx = 0
+  // 1-based index of the current level
+  let levelIdx = 1
 
   while (level.count() > 1 || !level.has(0)) {
     level = level.sortBy((_, pos) => pos)

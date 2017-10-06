@@ -61,8 +61,8 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 0, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' },
-          { level: 0, pos: 1, hash: '1000000000000000000000000000000000000000000000000000000000000000' }
+          { level: 1, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' },
+          { level: 1, pos: 1, hash: '1000000000000000000000000000000000000000000000000000000000000000' }
         ]
       })).to.throw(/duplicate entry in proof/i)
     })
@@ -74,9 +74,9 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 0, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
+          { level: 1, pos: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw('redefined entry (0, 1)')
+      })).to.throw('redefined entry (1, 1)')
 
       expect(() => StrListView.from({
         entries: [
@@ -84,9 +84,9 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 1, pos: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
+          { level: 2, pos: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw('redefined entry (1, 0)')
+      })).to.throw('redefined entry (2, 0)')
 
       expect(() => StrListView.from({
         entries: [
@@ -105,7 +105,7 @@ describe('ListView', () => {
           { key: '2', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (1, 0)')
+      })).to.throw('missing entry (2, 0)')
 
       expect(() => StrListView.from({
         entries: [
@@ -113,7 +113,7 @@ describe('ListView', () => {
           { key: '3', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (0, 2)')
+      })).to.throw('missing entry (1, 2)')
 
       expect(() => StrListView.from({
         entries: [
@@ -121,7 +121,7 @@ describe('ListView', () => {
           { key: '2', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (0, 0)')
+      })).to.throw('missing entry (1, 0)')
 
       expect(() => StrListView.from({
         entries: [
@@ -129,7 +129,7 @@ describe('ListView', () => {
           { key: '1001', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (3, 124)')
+      })).to.throw('missing entry (4, 124)')
     })
 
     it('should not parse list view with entries in proof conflicting with discovered stub', () => {
@@ -138,8 +138,8 @@ describe('ListView', () => {
           { key: '4', value: 'bar' }
         ],
         proof: [
-          { level: 2, pos: 0, hash: hash(new Uint8Array(10)) },
-          { level: 2, pos: 2, hash: hash(new Uint8Array(20)) }
+          { level: 3, pos: 0, hash: hash(new Uint8Array(10)) },
+          { level: 3, pos: 2, hash: hash(new Uint8Array(20)) }
         ]
       })).to.throw(/encountered element at position/)
 
@@ -149,8 +149,8 @@ describe('ListView', () => {
           { key: '5', value: 'foo' }
         ],
         proof: [
-          { level: 2, pos: 0, hash: hash(new Uint8Array(10)) },
-          { level: 2, pos: 3, hash: hash(new Uint8Array(20)) }
+          { level: 3, pos: 0, hash: hash(new Uint8Array(10)) },
+          { level: 3, pos: 3, hash: hash(new Uint8Array(20)) }
         ]
       })).to.throw(/encountered element at position/)
     })
@@ -209,8 +209,8 @@ describe('ListView', () => {
           { key: '1', value: 'bar' }
         ],
         proof: [
-          { level: 0, pos: 0, hash: hash(types.Str.from('foo')) },
-          { level: 0, pos: 3, hash: hash(types.Str.from('foobar')) }
+          { level: 1, pos: 0, hash: hash(types.Str.from('foo')) },
+          { level: 1, pos: 3, hash: hash(types.Str.from('foobar')) }
         ]
       })
 
@@ -247,7 +247,7 @@ describe('ListView', () => {
           { key: '4', value: 'item4' }
         ],
         proof: [
-          { level: 2, pos: 0, hash: h1to4 }
+          { level: 3, pos: 0, hash: h1to4 }
         ]
       })
 

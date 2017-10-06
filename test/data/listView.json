@@ -28,12 +28,12 @@
         { "key": "62", "value": [210, 127, 166, 231, 147, 251, 53, 14, 79, 139] }
       ],
       "proof": [
-        { "level": 5, "pos": 0, "hash": "0438082601f8b38ae010a621a48f4b4cd021c4e6e69219e3c2d8abab482039e9" },
-        { "level": 4, "pos": 2, "hash": "53d8e8a89be4b96326ff43c3cf6ad4a25cf2e1ec44dbd75937c3cca9d632abaf" },
-        { "level": 3, "pos": 6, "hash": "91f3479b74c954440ec98bc1dac97fa8a3aac38ceeeebb3996b3ee7aa2e498c8" },
-        { "level": 0, "pos": 56, "hash": "77aed0fb2f30b04e29c006a137d9d879c7fee98d9757fde7580bccd72dce8946" },
-        { "level": 0, "pos": 63, "hash": "cf0710f238e771f3e73d08ad1eb5bc8e6cbf88afa343ea94954f95005c4553f0" },
-        { "level": 6, "pos": 1, "hash": "b267fa0930dede7557b805fe643a3ce8ebe4434e366924df1d622785365cf0fc" }
+        { "level": 6, "pos": 0, "hash": "0438082601f8b38ae010a621a48f4b4cd021c4e6e69219e3c2d8abab482039e9" },
+        { "level": 5, "pos": 2, "hash": "53d8e8a89be4b96326ff43c3cf6ad4a25cf2e1ec44dbd75937c3cca9d632abaf" },
+        { "level": 4, "pos": 6, "hash": "91f3479b74c954440ec98bc1dac97fa8a3aac38ceeeebb3996b3ee7aa2e498c8" },
+        { "level": 1, "pos": 56, "hash": "77aed0fb2f30b04e29c006a137d9d879c7fee98d9757fde7580bccd72dce8946" },
+        { "level": 1, "pos": 63, "hash": "cf0710f238e771f3e73d08ad1eb5bc8e6cbf88afa343ea94954f95005c4553f0" },
+        { "level": 7, "pos": 1, "hash": "b267fa0930dede7557b805fe643a3ce8ebe4434e366924df1d622785365cf0fc" }
       ]
     }
   },
@@ -56,8 +56,8 @@
         { "key": "6", "value": [7, 8] }
       ],
       "proof": [
-        { "level": 2, "pos": 0, "hash": "4ca37c2d6369e1978ffa3575cad944c2849ec02b9981baa0e86f72ed339074c9" },
-        { "level": 1, "pos": 2, "hash": "8a93165255b6805268e0ba89abc8242b20c2fcdf9bfed89c90a622a7f2f139b2" }
+        { "level": 3, "pos": 0, "hash": "4ca37c2d6369e1978ffa3575cad944c2849ec02b9981baa0e86f72ed339074c9" },
+        { "level": 2, "pos": 2, "hash": "8a93165255b6805268e0ba89abc8242b20c2fcdf9bfed89c90a622a7f2f139b2" }
       ]
     }
   },
@@ -110,10 +110,10 @@
 
     "data": {
       "proof": [
-        { "level": 4, "pos": 0, "hash": "685182dce620f44f71e45cadad54f103243698797c42e84eef9ba43ffa3bea46" },
-        { "level": 3, "pos": 2, "hash": "7b01bc939f0284ae579fefad7161f749e3cde0c5dbbfc40daf7c06ee28963a20" },
-        { "level": 2, "pos": 6, "hash": "b6249b01e0698702dfe48a6f6011b13e2a535514ba93d2399cec56ab063d91a7" },
-        { "level": 0, "pos": 28, "hash": "23a8e21b4b205aa58510444c8e65ae125c295fb000003078b6b57794f757f05b" }
+        { "level": 5, "pos": 0, "hash": "685182dce620f44f71e45cadad54f103243698797c42e84eef9ba43ffa3bea46" },
+        { "level": 4, "pos": 2, "hash": "7b01bc939f0284ae579fefad7161f749e3cde0c5dbbfc40daf7c06ee28963a20" },
+        { "level": 3, "pos": 6, "hash": "b6249b01e0698702dfe48a6f6011b13e2a535514ba93d2399cec56ab063d91a7" },
+        { "level": 1, "pos": 28, "hash": "23a8e21b4b205aa58510444c8e65ae125c295fb000003078b6b57794f757f05b" }
       ],
       "entries": [
         {
@@ -1197,8 +1197,8 @@
         { "key": "0", "value": [1, 2] }
       ],
       "proof": [
-        { "level": 1, "pos": 1, "hash": "7c51150809ce23d03cf1c99c0042a1577452e083b3bf4884115ecd1ac7a240e5" },
-        { "level": 2, "pos": 1, "hash": "1d6fd0070793ab34e9a5e4c62fe8df126894e2633ab2dbfd13f0868a72cb0d53" }
+        { "level": 2, "pos": 1, "hash": "7c51150809ce23d03cf1c99c0042a1577452e083b3bf4884115ecd1ac7a240e5" },
+        { "level": 3, "pos": 1, "hash": "1d6fd0070793ab34e9a5e4c62fe8df126894e2633ab2dbfd13f0868a72cb0d53" }
       ]
     }
   }
