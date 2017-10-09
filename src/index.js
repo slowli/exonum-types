@@ -9,7 +9,6 @@ for (let name in std) {
 }
 
 export { isExonumFactory, isExonumType, isExonumObject, crypto }
-export * from './jsonConverters'
 
 export default Object.assign(std, {
   isExonumFactory,
