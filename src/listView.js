@@ -58,6 +58,35 @@ function preprocessProof (proof) {
 }
 
 /**
+ * Calculates the root hash of the index, given some `entries` of the index and a `proof`
+ * containing hashes in the branch elements of the index.
+ *
+ * Calculation is performed by iteratively constructing height levels of the original index
+ * based on the supplied information. Namely, on each level each 2 elements at indexes
+ * `2*i` and `2*i + 1` are hashed together and moved to the element `i` on the next level.
+ * If the number of elements on the level is odd, the last element is hashed separately.
+ * The same procedure is performed here, with the only discrepancy that the vast majority
+ * of the branch elements will be undefined, and operations are performed only on "visible"
+ * branch elements.
+ *
+ * It is easy to prove that even "visible" branch elements on each level need to have
+ * even indexes, and odd ones odd indexes. Correspondingly, the procedure at each height level
+ * is as follows:
+ *
+ * 1. Take 2 next elements from the level.
+ * 2. Check the oddity of elements' indexes.
+ * 3. Hash the elements together and attempt to move the resulting hash to the next level.
+ *   If the corresponding entry is occupied, return an error.
+ * 4. Repeat steps 1-3 until there is at most 1 element left on the level.
+ * 5. If there is a last element on the level, it is assumed to be the last element on the level
+ *   in the underlying `ProofListIndex`. This means that on the following levels, no entries can
+ *   occur to the right of the hash resulting from this element, which is checked at the start
+ *   of each level.
+ *
+ * The level processing ends once there is a single element on the level, which has `index = 0`.
+ * It is easy to see that this is the last level in "honest" `ListView`s. Thus, if there are
+ * any unprocessed entries left by this point, the `ListView` is bogus.
+ *
  * @param {OrderedMap<Uint8, OrderedMap<Uint64, Hash>>} proof
  * @param {Map<Uint64, ExonumType>} entries
  */
@@ -96,9 +125,10 @@ function treeHash (proof, entries, hashFn = hash) {
       ) : Seq.Indexed()
 
       // The last element may be needed to be added separately
+      // in the case there is an odd number of elements on the level
       if (level.count() % 2 === 1) {
         // Array embedding is required for `concat()` to treat the inner array
-        //  as a single pair of elements, rather than an iterator of 2 elements
+        // as a single pair of elements, rather than an iterator of 2 elements
         pairs = pairs.concat(Seq.Indexed.of([level.entrySeq().last(), undefined]))
       }
 
