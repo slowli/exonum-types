@@ -11,8 +11,8 @@ import option from './lowlevel/option'
 import struct from './lowlevel/struct'
 import union from './lowlevel/union'
 import message from './message'
-import ListView from './listView'
-import MapView from './mapView'
+import ListView from './ListView'
+import MapView from './MapView'
 
 // Resolver and type extensions
 import TypeResolver from './lowlevel/TypeResolver'
