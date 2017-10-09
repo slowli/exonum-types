@@ -4,8 +4,8 @@ import chai from 'chai'
 import chaiBytes from 'chai-bytes'
 import dirtyChai from 'dirty-chai'
 
-import { convertMapJSON } from '../src/jsonConverters'
 import types from '../src/std'
+import { hash } from '../src/crypto'
 import { isExonumType } from '../src/lowlevel/common'
 
 import samples from './data/mapView.json'
@@ -17,73 +17,197 @@ const expect = chai
 
 const mapView = types.mapView
 
-function padWithZeros (bits) {
-  while (bits.length < 256) bits = bits + '0'
-  return { bin: bits }
-}
-
-function padWithOnes (bits) {
-  while (bits.length < 256) bits = bits + '1'
-  return { bin: bits }
-}
-
-function padWithRandom (bits) {
-  while (bits.length < 256) bits = bits + (Math.random() > 0.5 ? '1' : '0')
-  return { bin: bits }
-}
-
 describe('mapView', () => {
+  const StrMapView = mapView({ K: 'Str', V: 'Str' })
+
+  const BufferMapView = mapView({
+    K: 'PublicKey',
+    V: { fixedBuffer: 8 },
+    hashKeys: false
+  })
+
   describe('factory', () => {
     it('should create type', () => {
-      const StrMapView = mapView('Str')
       expect(StrMapView).to.satisfy(isExonumType)
       expect(StrMapView.meta().factoryName).to.equal('mapView')
+      expect(StrMapView.meta().key).to.equal(types.Str)
       expect(StrMapView.meta().value).to.equal(types.Str)
+      expect(StrMapView.meta().hashKeys).to.be.true()
+
+      expect(BufferMapView).to.satisfy(isExonumType)
+      expect(BufferMapView.meta().factoryName).to.equal('mapView')
+      expect(BufferMapView.meta().key).to.equal(types.PublicKey)
+      expect(BufferMapView.meta().value.meta().size).to.equal(8)
+      expect(BufferMapView.meta().hashKeys).to.be.false()
     })
   })
 
-  it('should fail on incorrect key ordering', () => {
-    const StrMapView = mapView('Str')
-    const json = {
-      branch: {
-        leftKey: '11',
-        rightKey: '101',
-        left: { hash: '0000000000000000000000000000000000000000000000000000000000000000' },
-        right: { hash: '0000000000000000000000000000000000000000000000000000000000000001' }
-      }
-    }
+  describe('constructor', () => {
+    it('should throw on non-terminal solitary node', () => {
+      expect(() => StrMapView.from({
+        entries: [],
+        proof: [
+          { key: '001', hash: '34264463370758a230017c5635678c9a39fa90a5081ec08f85de6c56243f4011' }
+        ]
+      })).to.throw(/non-terminal isolated node/i)
+    })
 
-    expect(() => StrMapView.from(json)).to.throw(/incorrect key ordering/i)
+    it('should throw on discovered prefix key pairs', () => {
+      expect(() => StrMapView.from({
+        entries: [],
+        proof: [
+          { key: '0', hash: '34264463370758a230017c5635678c9a39fa90a5081ec08f85de6c56243f4011' },
+          { key: '001', hash: '34264463370758a230017c5635678c9a39fa90a5081ec08f85de6c56243f4011' }
+        ]
+      })).to.throw('bits(0) is a prefix of key bits(001)')
+
+      expect(() => StrMapView.from({
+        entries: [
+          { key: 'foo', value: 'FOO' }
+        ],
+        proof: [
+          { key: '001', hash: '34264463370758a230017c5635678c9a39fa90a5081ec08f85de6c56243f4011' }
+        ]
+      })).to.throw('bits(001) is a prefix of key bits(00101100') // SHA-256('foo') = 2c26...
+
+      expect(() => StrMapView.from({
+        entries: [
+          { missing: 'foo' }
+        ],
+        proof: [
+          { key: '001', hash: '34264463370758a230017c5635678c9a39fa90a5081ec08f85de6c56243f4011' }
+        ]
+      })).to.throw('bits(001) is a prefix of key bits(00101100')
+    })
   })
 
-  it('should fail on incorrect key ordering at non-root branch', () => {
-    const StrMapView = mapView('Str')
-    const json = {
-      branch: {
-        leftKey: '0',
-        rightKey: '1',
-        left: {
-          branch: {
-            leftKey: '01',
-            rightKey: '00',
-            left: { hash: '0000000000000000000000000000000000000000000000000000000000000000' },
-            right: { hash: '0000000000000000000000000000000000000000000000000000000000000001' }
-          }
-        },
-        right: { hash: '0000000000000000000000000000000000000000000000000000000000000002' }
-      }
-    }
+  describe('hash', () => {
+    it('should return zeros on empty map', () => {
+      const view = StrMapView.from({
+        entries: [],
+        proof: []
+      })
 
-    expect(() => StrMapView.from(json)).to.throw(/incorrect key ordering/i)
+      expect(view.hash()).to.equalBytes(new Uint8Array(32))
+    })
+
+    it('should calculate hash for a single exposed node', () => {
+      const view = StrMapView.from({
+        entries: [
+          { key: 'foo', value: 'FOO' }
+        ],
+        proof: []
+      })
+
+      expect(view.hash()).to.equalBytes(hash(
+        types.Bool.TRUE,
+        hash(types.Str.from('foo')),
+        types.Uint8.from(0),
+        hash(types.Str.from('FOO'))
+      ))
+    })
+
+    it('should calculate hash for a single hashed node', () => {
+      const view = StrMapView.from({
+        entries: [],
+        proof: [
+          {
+            key: types.Bits256.leaf(hash(types.Str.from('foo'))).toJSON(),
+            hash: Buffer.from(hash(types.Str.from('FOO'))).toString('hex')
+          }
+        ]
+      })
+
+      expect(view.hash()).to.equalBytes(hash(
+        types.Bool.TRUE,
+        hash(types.Str.from('foo')),
+        types.Uint8.from(0),
+        hash(types.Str.from('FOO'))
+      ))
+    })
+
+    it('should calculate hash for 2-node tree', () => {
+      const view = StrMapView.from({
+        entries: [],
+        proof: [
+          {
+            key: '0',
+            hash: '0000000000000000000000000000000000000000000000000000000000000000'
+          },
+          {
+            key: '10',
+            hash: '0f00000000000000000000000000000000000000000000000000000000000000'
+          }
+        ]
+      })
+
+      const rightHash = new Uint8Array(32)
+      rightHash[0] = 15
+      const rightKey = new Uint8Array(32)
+      rightKey[0] = 128
+
+      expect(view.hash()).to.equalBytes(hash(
+        new Uint8Array(32),
+        rightHash,
+
+        types.Bool.FALSE,
+        new Uint8Array(32),
+        types.Uint8.from(1),
+
+        types.Bool.FALSE,
+        rightKey,
+        types.Uint8.from(2)
+      ))
+    })
+
+    it('should calculate hash for 2-node tree with intersecting root keys', () => {
+      const view = StrMapView.from({
+        entries: [],
+        proof: [
+          {
+            key: '001',
+            hash: '0000000000000000000000000000000000000000000000000000000000000000'
+          },
+          {
+            key: '01',
+            hash: 'ff00000000000000000000000000000000000000000000000000000000000000'
+          }
+        ]
+      })
+
+      const rightHash = new Uint8Array(32)
+      rightHash[0] = 255
+      const leftKey = new Uint8Array(32)
+      leftKey[0] = 32
+      const rightKey = new Uint8Array(32)
+      rightKey[0] = 64
+
+      expect(view.hash()).to.equalBytes(hash(
+        new Uint8Array(32),
+        rightHash,
+
+        types.Bool.FALSE,
+        leftKey,
+        types.Uint8.from(3),
+
+        types.Bool.FALSE,
+        rightKey,
+        types.Uint8.from(2)
+      ))
+    })
   })
 
   function testValidSample (sampleName) {
     describe(`on sample ${sampleName}`, () => {
       const sample = samples[sampleName]
       const expected = sample.expected
-      const json = convertMapJSON(sample.data)
+      const json = sample.data
       const elementLength = expected.elementLength
-      const MapView = mapView({ fixedBuffer: elementLength }, types.resolver)
+      const MapView = mapView({
+        K: 'PublicKey',
+        V: { fixedBuffer: elementLength },
+        hashKeys: false
+      })
 
       let map
 
@@ -106,44 +230,6 @@ describe('mapView', () => {
       it('should calculate correct root hash', () => {
         expect(map.hash()).to.equalBytes(expected.rootHash)
       })
-
-      it('should report visible keys as potential', () => {
-        map.keySeq().forEach(key => {
-          expect(map.mayHave(key), `Failed for key ${key}`).to.be.true()
-        })
-      })
-
-      if (expected.maybeKeys) {
-        it('should report potential keys in the map', () => {
-          expected.maybeKeys.forEach(key => {
-            if (key.endsWith('...')) {
-              key = key.substring(0, key.length - 3)
-
-              expect(map.mayHave(padWithZeros(key)), `Failed for ${key}(0)*`).to.be.true()
-              expect(map.mayHave(padWithOnes(key)), `Failed for ${key}(1)*`).to.be.true()
-              expect(map.mayHave(padWithRandom(key)), `Failed for ${key}.*`).to.be.true()
-            } else {
-              expect(map.mayHave({ bin: key }), `Failed for ${key.substring(0, 20)}...`).to.be.true()
-            }
-          })
-        })
-      }
-
-      if (expected.notKeys) {
-        it('should report non-existing keys in the map', () => {
-          expected.notKeys.forEach(key => {
-            if (key.endsWith('...')) {
-              key = key.substring(0, key.length - 3)
-
-              expect(map.mayHave(padWithZeros(key)), `Failed for ${key}(0)*`).to.be.false()
-              expect(map.mayHave(padWithOnes(key)), `Failed for ${key}(1)*`).to.be.false()
-              expect(map.mayHave(padWithRandom(key)), `Failed for ${key}.*`).to.be.false()
-            } else {
-              expect(map.mayHave({ bin: key }), `Failed for ${key.substring(0, 20)}...`).to.be.true()
-            }
-          })
-        })
-      }
     })
   }
 
@@ -151,9 +237,13 @@ describe('mapView', () => {
     it(`should fail on sample ${sampleName}`, () => {
       const sample = samples[sampleName]
       const elementLength = sample.expected.elementLength
-      const json = convertMapJSON(sample.data)
+      const json = sample.data
 
-      const MapView = mapView({ fixedBuffer: elementLength })
+      const MapView = mapView({
+        K: 'Hash',
+        V: { fixedBuffer: elementLength },
+        hashKeys: false
+      })
 
       expect(() => new MapView(json)).to.throw(expectedError)
     })
@@ -167,9 +257,7 @@ describe('mapView', () => {
   testValidSample('valid-single-hash')
   testValidSample('valid-empty')
 
-  testInvalidSample('invalid-single-non-term', /non-terminal key at an isolated node/)
-  testInvalidSample('invalid-single-hash-non-term', /non-terminal key at an isolated node/)
-  testInvalidSample('invalid-8-non-term', /non-terminal key at value/)
-  testInvalidSample('invalid-8-oversized-key', /bit slice.*too long/)
-  testInvalidSample('invalid-special-root', 'one of the keys at the root is a substring of the other key')
+  testInvalidSample('invalid-single-hash-non-term', /non-terminal isolated node/i)
+  testInvalidSample('invalid-8-oversized-key', /Cannot parse buffer/i)
+  testInvalidSample('invalid-special-root', 'key bits(0011) is a prefix of key bits(00111)')
 })

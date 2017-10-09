@@ -1,158 +1,137 @@
-import { OrderedMap } from 'immutable'
+import { Map as ImmutableMap, Set as ImmutableSet } from 'immutable'
 
-import { createType, memoize, rawValue } from './lowlevel/common'
+import { createType, rawValue } from './lowlevel/common'
 import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
-import { getBit } from './Bits256'
 
-/**
- * Walks the tree and parses the structure of a proof for MapView.
- * Throws errors if the structure is incorrect (i.e., some broken invariants).
- */
-function parseTreeStructure (tree, Bits256) {
-  const nodes = []
-  const leaves = []
-
-  function pushNode (node, key) {
-    node.fullKey = key
-    nodes.push(node)
-  }
-
-  pushNode(tree, Bits256.from(''))
-
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i]
-    const key = node.fullKey
-
-    node.match({
-      branch: ({ left, right, leftKey, rightKey }) => {
-        if (key.bitLength() === 0) {
-          // Root branch has the special rules as to the validity of the keys:
-          // Neither of the keys should be a substring of the other key
-          let pos = 0
-          const maxPos = Math.min(leftKey.bitLength(), rightKey.bitLength())
-          while (pos < maxPos && leftKey.bit(pos) === rightKey.bit(pos)) {
-            pos++
-          }
-          if (pos === maxPos) {
-            throw new Error('Invalid MapView: one of the keys at the root is a substring of the other key')
-          }
-
-          if (leftKey.bit(pos) > rightKey.bit(pos)) {
-            throw new TypeError('Invalid MapView: Incorrect key ordering')
-          }
-        } else {
-          // Non-root branch; left key should start with 0, and right one with 1
-          if (leftKey.bit(0) !== 0 || rightKey.bit(0) !== 1) {
-            throw new Error('Invalid MapView: Incorrect key ordering')
-          }
-        }
-
-        // `key.append(...)` checks overflow of keys
-        pushNode(left, key.append(leftKey))
-        pushNode(right, key.append(rightKey))
-      },
-
-      // Not a branch node
-      _: () => leaves.push(node)
-    })
-  }
-
-  const values = leaves.filter(node => node.type === 'val')
-
-  // All values must have terminal keys
-  if (!values.every(node => node.fullKey.isTerminal)) {
-    throw new Error('Invalid MapView: non-terminal key at value node')
-  }
-
-  return { nodes, leaves, values }
+function stubHash (key, nodeHash) {
+  return hash(key, nodeHash)
 }
 
-function validateStub (stub) {
-  if (!stub.key.isTerminal) {
-    throw new Error('Invalid MapView: non-terminal key at an isolated node')
+function nodeHash (node) {
+  return hash(node.leftHash, node.rightHash, node.leftKey, node.rightKey)
+}
+
+class TreeNode {
+  constructor ({ key, leftKey, leftHash, rightKey }) {
+    this.key = key
+    this.leftKey = leftKey
+    this.rightKey = rightKey
+    this.leftHash = leftHash
+  }
+
+  truncateRightKey (toBits) {
+    this.rightKey = this.rightKey.truncate(toBits)
+  }
+
+  finalize (rightHash) {
+    this.rightHash = rightHash
+    return nodeHash(this)
   }
 }
 
 /**
- * Calculates tree hash of a stub `MapView`.
- *
- * @returns {Uint8Array}
+ * @param {List<[Bits256, ?Hash]>} entries
+ *  Guaranteed to be sorted by increasing `Bits256` component
  */
-function stubHash ({ key, value }) {
-  const valueHash = (value.type === 'val') ? hash(value.val) : value.hash
-  return hash(key, valueHash)
-}
-
-/**
- * Recursively calculates the hash of the entire `MapView`.
- *
- * @param {MapViewNode<any>} node
- * @returns {Uint8Array}
- */
-function treeHash (node) {
-  return node.match({
-    hash: (h) => h,
-    val: (val) => hash(val),
-    branch: ({ left, right }) => hash(treeHash(left), treeHash(right), left.fullKey, right.fullKey)
-  })
-}
-
-/**
- * Searches for a (hash) key in a tree-like proof for the `MapView`.
- *
- * @returns {boolean}
- *   `true` if the tree *may* continue the searched key, `false` otherwise
- */
-function searchKey (node, key) {
-  let pos = 0
-
-  while (node.type === 'branch') {
-    const { left, right, leftKey, rightKey } = node.branch
-
-    let i = 0
-    while (leftKey.bit(i) === getBit(key, pos + i) && rightKey.bit(i) === getBit(key, pos + i)) {
-      i++ // May only be triggered for the root branch
+function treeHash (entries, emptyKey) {
+  if (entries.count() === 0) {
+    return new Uint8Array(32)
+  } else if (entries.count() === 1) {
+    const { 0: key, 1: hash } = entries.get(0)
+    if (!key.isTerminal) {
+      throw new Error('Invalid map view: non-terminal isolated node')
     }
 
-    // Are the both keys different from our key? If yes, our key is not in the tree
-    if (
-      pos === 0 &&
-      leftKey.bit(i) === rightKey.bit(i) &&
-      leftKey.bit(i) !== getBit(key, i)
-    ) {
-      return false
+    return stubHash(key, hash)
+  }
+
+  // Check that there are no super/subkeys among the entries, i.e., no pairs
+  // like `[01, ...]` and `[011, ...]`
+  for (let i = 1; i < entries.count(); i++) {
+    const prevKey = entries.get(i - 1)[0]
+    const key = entries.get(i)[0]
+
+    if (prevKey.commonPrefix(key).equals(prevKey)) {
+      throw new Error(`Invalid map view: key ${prevKey} is a prefix of key ${key}`)
+    }
+  }
+
+  // Add the first entry into the right contour
+  let lastKey = entries.get(0)[0]
+  let lastHash = entries.first()[1]
+
+  const root = {
+    key: emptyKey,
+    leftKey: null,
+    rightKey: lastKey,
+    leftHash: null,
+
+    truncateRightKey (bitLength) {
+      this.rightKey = this.rightKey.truncate(bitLength)
+    },
+
+    finalize (hash) {
+      // The root node is special: it can be "finalized" 2 times (for the left and right subtree).
+      if (!this.leftHash) {
+        this.leftKey = this.rightKey
+        this.leftHash = hash
+        this.rightKey = null
+        return hash
+      } else {
+        this.rightHash = hash
+        return nodeHash(this)
+      }
+    }
+  }
+
+  let rightContour = [ root ]
+  rightContour.last = function () {
+    return this[this.length - 1]
+  }
+
+  for (let i = 1; i < entries.count(); i++) {
+    const { 0: key, 1: hash } = entries.get(i)
+    if (!hash) {
+      continue
     }
 
-    // `leftKey` and `rightKey` cannot be both exhausted here
-    // because otherwise they would be the same
+    const commonPrefix = lastKey.commonPrefix(key)
 
-    let path
-    let pathKey
-    if (leftKey.bitLength() < i || leftKey.bit(i) === getBit(key, pos + i)) {
-      [path, pathKey] = [left, leftKey]
-    } else if (rightKey.bitLength() < i || rightKey.bit(i) === getBit(key, pos + i)) {
-      [path, pathKey] = [right, rightKey]
+    // `finHash` and `finKey` are the characteristics of the last finalized node
+    // in the contour
+    let [finHash, finKey] = [lastHash, lastKey]
+    while (rightContour.length > 0 && rightContour.last().key.bitLength() >= commonPrefix.bitLength()) {
+      const last = rightContour.pop()
+      finHash = last.finalize(finHash)
+      finKey = last.key
+    }
+
+    if (rightContour.length > 0) {
+      rightContour[rightContour.length - 1].truncateRightKey(commonPrefix.bitLength())
+      const newBranch = new TreeNode({
+        key: commonPrefix,
+        leftKey: finKey,
+        leftHash: finHash,
+        rightKey: key
+      })
+      rightContour.push(newBranch)
     } else {
-      /* istanbul ignore next: seems to be unreachable */
-      throw new Error('Invariant broken: Bogus execution path in searching a key in MapView')
+      // The root has been removed from the contour, which means that its left side is now finalized.
+      // Push the root back with the finalized left side.
+      root.rightKey = key
+      rightContour.push(root)
     }
 
-    // Go down the path until it is exhausted or there is a discrepancy among keys
-    while (i < pathKey.bitLength() && pathKey.bit(i) === getBit(key, pos + i)) {
-      i++
-    }
-
-    if (i >= pathKey.bitLength()) {
-      pos += pathKey.bitLength()
-      node = path
-    } else {
-      return false
-    }
+    lastKey = key
+    lastHash = hash
   }
 
-  // node.type !== 'branch', there is or may be a specified key
-  return true
+  let finHash = lastHash
+  while (rightContour.length > 0) {
+    finHash = rightContour.pop().finalize(finHash)
+  }
+  return finHash
 }
 
 const PROXIED_METHODS = [
@@ -164,74 +143,62 @@ const PROXIED_METHODS = [
   'entrySeq'
 ]
 
-function mapView (ValType, resolver) {
-  const Hash = resolver.resolve('Hash')
+function mapView ({ K: KeyType, V: ValType, hashKeys = true }, resolver) {
   const Bits256 = resolver.resolve('Bits256')
-
-  const ProofRoot = resolver.resolve({ MapProofRoot: ValType })
+  const MapViewBase = resolver.resolve({ $MapViewBase: { K: KeyType, V: ValType } })
 
   class MapView extends createType({
     name: `MapView<${ValType.inspect()}>`
   }) {
     constructor (obj) {
-      const root = ProofRoot.from(obj)
+      const parsed = MapViewBase.from(obj)
 
-      const mapEntries = root.match({
-        empty: () => [],
-        stub: (stub) => {
-          validateStub(stub)
-          return stub.value.match({
-            val: (val) => [[stub.key.getOriginal('bytes'), val]],
-            _: () => []
-          })
-        },
-        tree: (tree) => {
-          const { values } = parseTreeStructure(tree, Bits256)
-          // Guaranteed to be sorted by ascending `node.pos`
-          return values.map(node => [node.fullKey.getOriginal('bytes'), node.val])
-        }
+      // Entries in the proof presented as `[Bits256, Hash]` pairs
+      const proofList = parsed.proof.toList().map(entry => [entry.key, entry.hash])
+      // Visible entries as `[Bits256, ?Hash]` pairs
+      const entryList = parsed.entries.toList().map(entry => entry.match({
+        missing: (e) => [
+          Bits256.leaf(hashKeys ? hash(e.getOriginal('missing')) : e.missing),
+          null
+        ],
+        entry: (e) => [
+          Bits256.leaf(hashKeys ? hash(e.getOriginal('key')) : e.key),
+          hash(e.getOriginal('value'))
+        ]
+      }))
+
+      const entries = entryList.concat(proofList).sort(
+        ({ 0: keyA }, { 0: keyB }) => Bits256.comparator(keyA, keyB))
+
+      super({
+        map: ImmutableMap(parsed.entries
+          .toList()
+          .filter(e => e.type === 'entry')
+          .map(e => [e.entry.getOriginal('key'), e.entry.value])),
+        missing: ImmutableSet(entryList.filter(e => e[1] === null).map(e => e[0]))
       })
 
-      super({ root, map: OrderedMap(mapEntries) })
+      rawValue(this).hash = treeHash(entries, Bits256.from(''))
     }
 
     hash () {
-      const root = rawValue(this).root
-      return root.match({
-        empty: () => new Uint8Array(32),
-        stub: (stub) => stubHash(stub),
-        tree: (tree) => treeHash(tree)
-      })
+      return rawValue(this).hash
     }
 
     count () {
       return rawValue(this).map.count()
     }
 
-    has (hash) {
-      const map = rawValue(this).map
-      return map.has(Hash.from(hash))
+    has (key) {
+      key = KeyType.from(key)
+      return rawValue(this).map.has(key)
     }
 
-    get (hash) {
-      const map = rawValue(this).map
-      return map.get(Hash.from(hash))
-    }
-
-    /**
-     * Checks whether this map can contain a key matching the specified hash.
-     */
-    mayHave (hash) {
-      const root = rawValue(this).root
-      return root.match({
-        empty: () => false,
-        stub: (stub) => Hash.from(hash).equals(stub.key.getOriginal('bytes')),
-        tree: (tree) => searchKey(tree, rawValue(Hash.from(hash)))
-      })
+    get (key) {
+      key = KeyType.from(key)
+      return rawValue(this).map.get(key)
     }
   }
-
-  MapView.prototype.rootHash = memoize(MapView.prototype.rootHash)
 
   PROXIED_METHODS.forEach(methodName => {
     MapView.prototype[methodName] = function () {
@@ -245,9 +212,20 @@ function mapView (ValType, resolver) {
 
 export default initFactory(mapView, {
   name: 'mapView',
-  argumentMeta: 'value',
 
-  prepare (ValType, resolver) {
-    return resolver.resolve(ValType)
+  argumentMeta ({ K, V, hashKeys }) {
+    return {
+      key: K,
+      value: V,
+      hashKeys
+    }
+  },
+
+  prepare ({ K, V, hashKeys = true }, resolver) {
+    return {
+      K: resolver.resolve(K),
+      V: resolver.resolve(V),
+      hashKeys: !!hashKeys
+    }
   }
 })

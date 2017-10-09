@@ -100,23 +100,49 @@
     ]
   },
   {
-    "name": "MapProofNode",
+    "name": "$MapViewBase",
     "factory": {
-      "typeParams": [{ "name": "V" }],
-      "union": [
+      "typeParams": [{ "name": "K" }, { "name": "V" }],
+      "struct": [
         {
-          "name": "branch",
+          "name": "entries",
           "type": {
-            "struct": [
-              { "name": "left", "type": { "MapProofNode": { "typeParam": "V" } } },
-              { "name": "right", "type": { "MapProofNode": { "typeParam": "V" } } },
-              { "name": "leftKey", "type": "Bits256" },
-              { "name": "rightKey", "type": "Bits256" }
-            ]
+            "array": {
+              "union": {
+                "tagEmbedding": "none",
+                "variants": [
+                  {
+                    "name": "entry",
+                    "type": {
+                      "TableEntry": {
+                        "K": { "typeParam": "K" },
+                        "V": { "typeParam": "V" }
+                      }
+                    }
+                  },
+                  {
+                    "name": "missing",
+                    "type": {
+                      "struct": [
+                        { "name": "missing", "type": { "typeParam": "K" } }
+                      ]
+                    }
+                  }
+                ]
+              }
+            }
           }
         },
-        { "name": "hash", "type": "Hash" },
-        { "name": "val", "type": { "typeParam": "V" } }
+        {
+          "name": "proof", "type": {
+            "array": {
+              "struct": [
+                { "name": "key", "type": "Bits256" },
+                { "name": "hash", "type": "Hash" }
+              ]
+            }
+          }
+        }
       ]
     }
   },
