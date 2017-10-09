@@ -5,6 +5,34 @@ import initFactory from './lowlevel/initFactory'
 import { hash } from './crypto'
 
 /**
+ * Error during parsing a list view.
+ */
+class ListViewError extends Error {
+  constructor (kind, args) {
+    let message = ''
+
+    switch (kind) {
+      case 'missing':
+        message = `Missing entry in list view proof: (${args.height}, ${args.index})`
+        break
+      case 'redefined':
+        message = `Redefined entry in list view proof: (${args.height}, ${args.index})`
+        break
+      case 'unexpected':
+        message = `Unexpected entry in list view proof: (${args.height}, ${args.index}) ` +
+          `when index <= ${args.maxIndex} was expected at this height`
+        break
+      case 'extraHeight':
+        message = `Entry in list view proof past tree root: entry at height ${args.height} ` +
+          `whereas the root is at height ${args.treeHeight}`
+        break
+    }
+
+    super(message)
+  }
+}
+
+/**
  * Processes the proof returning a map, in which hashes are split by their level.
  *
  * @param {List<{ level: Uint8, index: Uint64, hash: Hash }>} proof
@@ -19,7 +47,7 @@ function preprocessProof (proof) {
 
       const entry = ImmutableMap([[index, hash]])
       m.set(height, m.get(height).mergeWith(
-        () => { throw new Error(`Duplicate entry in proof: (${height}, ${index})`) },
+        () => { throw new ListViewError('redefined', { height, index }) },
         entry
       ))
     })
@@ -36,7 +64,7 @@ function preprocessProof (proof) {
 function treeHash (proof, entries, hashFn = hash) {
   const hashedEntries = entries.map(value => hashFn(value))
   let level = hashedEntries.mergeWith(
-    (oldVal, newVal, index) => { throw new Error(`Invalid proof: redefined entry (1, ${index})`) },
+    (oldVal, newVal, index) => { throw new ListViewError('redefined', { index, height: 1 }) },
     proof.get(1) || OrderedMap()
   )
 
@@ -51,7 +79,11 @@ function treeHash (proof, entries, hashFn = hash) {
 
     const actualMaxIndex = level.keySeq().last()
     if (actualMaxIndex > maxIndex) {
-      throw new Error(`Invalid proof: encountered element at position ${actualMaxIndex} at height ${height}, whereas <=${maxIndex} was expected`)
+      throw new ListViewError('unexpected', {
+        maxIndex,
+        height,
+        index: actualMaxIndex
+      })
     }
 
     const nextLevel = OrderedMap().withMutations(nextLevel => {
@@ -82,14 +114,14 @@ function treeHash (proof, entries, hashFn = hash) {
           // - This is not the first entry. The previous entry has an odd index
           //   (provable by induction), so it cannot have position `evenIndex - 1`,
           //   which is even. q.e.d.
-          throw new Error(`Invalid proof: missing entry (${height}, ${evenIndex - 1})`)
+          throw new ListViewError('missing', { height, index: evenIndex - 1 })
         }
 
         if (odd !== undefined) {
           const { 0: oddIndex, 1: oddHash } = odd
 
           if (oddIndex !== evenIndex + 1) {
-            throw new Error(`Invalid proof: missing entry (${height}, ${oddIndex - 1})`)
+            throw new ListViewError('missing', { height, index: oddIndex - 1 })
           }
           nextLevel.set(evenIndex / 2, hashFn(evenHash, oddHash))
         } else {
@@ -103,7 +135,7 @@ function treeHash (proof, entries, hashFn = hash) {
 
     height++
     level = nextLevel.mergeWith(
-      (oldVal, newVal, index) => { throw new Error(`Invalid proof: redefined entry (${height}, ${index})`) },
+      (oldVal, newVal, index) => { throw new ListViewError('redefined', { height, index }) },
       proof.get(height) || OrderedMap())
     maxIndex = Math.floor(maxIndex / 2)
   }
@@ -111,7 +143,7 @@ function treeHash (proof, entries, hashFn = hash) {
   // The maximum known level of the tree
   const maxHeight = proof.keySeq().last()
   if (maxHeight >= height) {
-    throw new Error(`Invalid proof: proof entry at height ${maxHeight}, when the tree has root at height ${height}`)
+    throw new ListViewError('extraHeight', { height: maxHeight, treeHeight: height })
   }
 
   return level.get(0)
@@ -143,7 +175,9 @@ function listView (ElementType, resolver) {
 
       const map = OrderedMap(entries.map(entry => [entry.key, entry.value]))
       if (map.count() !== parsed.entries.count()) {
-        throw new Error('Invalid list view: duplicate key(s)')
+        const redefinedKey = entries.groupBy(entry => entry.key)
+          .findEntry(group => group.count() > 1)[0]
+        throw new ListViewError('redefined', { height: 0, index: redefinedKey })
       }
 
       const originalMap = OrderedMap(entries.map(

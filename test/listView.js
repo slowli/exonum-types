@@ -52,7 +52,7 @@ describe('ListView', () => {
           { key: '0', value: 'bar' }
         ],
         proof: []
-      })).to.throw(/duplicate key/i)
+      })).to.throw(/Redefined entry in list view proof/i)
     })
 
     it('should not parse list view with redefined proof entries', () => {
@@ -64,7 +64,7 @@ describe('ListView', () => {
           { height: 1, index: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' },
           { height: 1, index: 1, hash: '1000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw(/duplicate entry in proof/i)
+      })).to.throw(/Redefined entry in list view proof/i)
     })
 
     it('should not parse list view with entries colliding with proof entries', () => {
@@ -76,7 +76,7 @@ describe('ListView', () => {
         proof: [
           { height: 1, index: 1, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw('redefined entry (1, 1)')
+      })).to.throw(/Redefined entry in list view proof/i)
 
       expect(() => StrListView.from({
         entries: [
@@ -86,7 +86,7 @@ describe('ListView', () => {
         proof: [
           { height: 2, index: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw('redefined entry (2, 0)')
+      })).to.throw(/Redefined entry in list view proof/i)
 
       expect(() => StrListView.from({
         entries: [
@@ -96,7 +96,7 @@ describe('ListView', () => {
         proof: [
           { height: 10, index: 0, hash: '0000000000000000000000000000000000000000000000000000000000000000' }
         ]
-      })).to.throw('proof entry at height 10')
+      })).to.throw(/Entry in list view proof past tree root.*height 10/)
     })
 
     it('should not parse list view with insufficient information to construct root hash', () => {
@@ -105,7 +105,7 @@ describe('ListView', () => {
           { key: '2', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (2, 0)')
+      })).to.throw(/Missing entry in list view proof/i)
 
       expect(() => StrListView.from({
         entries: [
@@ -113,7 +113,7 @@ describe('ListView', () => {
           { key: '3', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (1, 2)')
+      })).to.throw(/Missing entry in list view proof/i)
 
       expect(() => StrListView.from({
         entries: [
@@ -121,7 +121,7 @@ describe('ListView', () => {
           { key: '2', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (1, 0)')
+      })).to.throw(/Missing entry in list view proof/i)
 
       expect(() => StrListView.from({
         entries: [
@@ -129,7 +129,7 @@ describe('ListView', () => {
           { key: '1001', value: 'bar' }
         ],
         proof: [ ]
-      })).to.throw('missing entry (4, 124)')
+      })).to.throw(/Missing entry in list view proof/i)
     })
 
     it('should not parse list view with entries in proof conflicting with discovered stub', () => {
@@ -141,7 +141,7 @@ describe('ListView', () => {
           { height: 3, index: 0, hash: hash(new Uint8Array(10)) },
           { height: 3, index: 2, hash: hash(new Uint8Array(20)) }
         ]
-      })).to.throw(/encountered element at position/)
+      })).to.throw(/Unexpected entry in list view proof/i)
 
       expect(() => StrListView.from({
         entries: [
@@ -152,7 +152,7 @@ describe('ListView', () => {
           { height: 3, index: 0, hash: hash(new Uint8Array(10)) },
           { height: 3, index: 3, hash: hash(new Uint8Array(20)) }
         ]
-      })).to.throw(/encountered element at position/)
+      })).to.throw(/Unexpected entry in list view proof/i)
     })
   })
 
@@ -303,5 +303,5 @@ describe('ListView', () => {
   testValidSample('valid-full')
   testValidSample('valid-many-elements')
 
-  testInvalidSample('invalid-stub-placement', /proof entry at height/i)
+  testInvalidSample('invalid-stub-placement', /Entry in list view proof past tree root/i)
 })
