@@ -6,7 +6,7 @@ import dirtyChai from 'dirty-chai'
 
 import types from '../src/std'
 import { hash } from '../src/crypto'
-import { isExonumType } from '../src/lowlevel/common'
+import { isExonumType, isExonumObject } from '../src/lowlevel/common'
 
 import samples from './data/listView.json'
 
@@ -41,6 +41,8 @@ describe('ListView', () => {
       expect(view.count()).to.equal(2)
       expect(view.get(0)).to.equal('foo')
       expect(view.get(1)).to.equal('bar')
+      expect(view.getOriginal(0)).to.satisfy(isExonumObject)
+      expect(view.getOriginal(1).toJSON()).to.equal('bar')
       expect(view.has(0)).to.be.true()
       expect(view.has(2)).to.be.false()
     })
