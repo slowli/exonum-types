@@ -15,12 +15,12 @@ const expect = chai
   .use(dirtyChai)
   .expect
 
-const mapView = types.mapView
+const MapView = types.MapView
 
-describe('mapView', () => {
-  const StrMapView = mapView({ K: 'Str', V: 'Str' })
+describe('MapView', () => {
+  const StrMapView = MapView({ K: 'Str', V: 'Str' })
 
-  const BufferMapView = mapView({
+  const BufferMapView = MapView({
     K: 'PublicKey',
     V: { fixedBuffer: 8 },
     hashKeys: false
@@ -29,13 +29,13 @@ describe('mapView', () => {
   describe('factory', () => {
     it('should create type', () => {
       expect(StrMapView).to.satisfy(isExonumType)
-      expect(StrMapView.meta().factoryName).to.equal('mapView')
+      expect(StrMapView.meta().factoryName).to.equal('MapView')
       expect(StrMapView.meta().key).to.equal(types.Str)
       expect(StrMapView.meta().value).to.equal(types.Str)
       expect(StrMapView.meta().hashKeys).to.be.true()
 
       expect(BufferMapView).to.satisfy(isExonumType)
-      expect(BufferMapView.meta().factoryName).to.equal('mapView')
+      expect(BufferMapView.meta().factoryName).to.equal('MapView')
       expect(BufferMapView.meta().key).to.equal(types.PublicKey)
       expect(BufferMapView.meta().value.meta().size).to.equal(8)
       expect(BufferMapView.meta().hashKeys).to.be.false()
@@ -203,7 +203,7 @@ describe('mapView', () => {
       const expected = sample.expected
       const json = sample.data
       const elementLength = expected.elementLength
-      const MapView = mapView({
+      const MView = MapView({
         K: 'PublicKey',
         V: { fixedBuffer: elementLength },
         hashKeys: false
@@ -212,7 +212,7 @@ describe('mapView', () => {
       let map
 
       it('should parse valid map view from sample', () => {
-        map = new MapView(json)
+        map = new MView(json)
 
         expect(map.count()).to.equal(expected.entries.length)
 
@@ -239,13 +239,13 @@ describe('mapView', () => {
       const elementLength = sample.expected.elementLength
       const json = sample.data
 
-      const MapView = mapView({
+      const MView = MapView({
         K: 'Hash',
         V: { fixedBuffer: elementLength },
         hashKeys: false
       })
 
-      expect(() => new MapView(json)).to.throw(expectedError)
+      expect(() => new MView(json)).to.throw(expectedError)
     })
   }
 

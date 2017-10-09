@@ -44,7 +44,7 @@ describe('isExonumFactory', () => {
     'union',
     'option',
     'message',
-    'mapView',
+    'MapView',
     'ListView'
   ]
 

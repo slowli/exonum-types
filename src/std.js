@@ -12,7 +12,7 @@ import struct from './lowlevel/struct'
 import union from './lowlevel/union'
 import message from './message'
 import ListView from './listView'
-import mapView from './mapView'
+import MapView from './mapView'
 
 // Resolver and type extensions
 import TypeResolver from './lowlevel/TypeResolver'
@@ -35,7 +35,7 @@ export const resolver = new TypeResolver()
     enum: union,
     message,
     ListView,
-    mapView
+    MapView
   })
   .add(rawDefinitions)
   .extend('Bits256', extendBits256)

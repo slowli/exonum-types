@@ -211,7 +211,7 @@ function mapView ({ K: KeyType, V: ValType, hashKeys = true }, resolver) {
 }
 
 export default initFactory(mapView, {
-  name: 'mapView',
+  name: 'MapView',
 
   argumentMeta ({ K, V, hashKeys }) {
     return {

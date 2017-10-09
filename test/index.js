@@ -43,7 +43,9 @@ function describeExports (name, types) {
       'array',
       'enum',
       'struct',
-      'message'
+      'message',
+      'ListView',
+      'MapView'
     ]
 
     factories.forEach(fName => {
