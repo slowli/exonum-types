@@ -134,7 +134,8 @@
           }
         },
         {
-          "name": "proof", "type": {
+          "name": "proof",
+          "type": {
             "array": {
               "struct": [
                 { "name": "key", "type": "Bits256" },
@@ -144,36 +145,6 @@
           }
         }
       ]
-    }
-  },
-  {
-    "name": "MapProofRoot",
-    "factory": {
-      "typeParams": [{ "name": "V" }],
-      "union": {
-        "tagEmbedding": "none",
-        "variants": [
-          { "name": "empty", "type": "None" },
-          {
-            "name": "stub",
-            "type": {
-              "struct": [
-                { "name": "key", "type": "Bits256" },
-                {
-                  "name": "value",
-                  "type": {
-                    "union": [
-                      { "name": "hash", "type": "Hash" },
-                      { "name": "val", "type": { "typeParam": "V" } }
-                    ]
-                  }
-                }
-              ]
-            }
-          },
-          { "name": "tree", "type": { "MapProofNode": { "typeParam": "V" } } }
-        ]
-      }
     }
   }
 ]
