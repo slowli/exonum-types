@@ -24,6 +24,78 @@ describe('Bits256', () => {
     '1011010100101000000000000000000010010010010101000000011111111111111100000000010110001111111111111111111111100011000111111110000000000100110'
   ]
 
+  describe('leaf', () => {
+    it('should construct instance from buffer', () => {
+      let buffer = new Uint8Array(32)
+      let key = Bits256.leaf(buffer)
+      expect(key.isTerminal).to.be.true()
+      expect(key.bytes).to.equalBytes(buffer)
+      expect(key.bitLength()).to.equal(256)
+
+      buffer[0] = 192
+      key = Bits256.leaf(buffer)
+      expect(key.bytes).to.equalBytes(buffer)
+      expect(key.bit(0)).to.equal(1)
+    })
+  })
+
+  describe('comparator', () => {
+    it('should compare 2 equal full-length instances', () => {
+      let buffer = new Uint8Array(32)
+      let key = Bits256.leaf(buffer)
+      let otherKey = Bits256.leaf(buffer)
+      expect(Bits256.comparator(key, otherKey)).to.equal(0)
+
+      buffer[0] = 192
+      buffer[10] = 100
+      key = Bits256.leaf(buffer)
+      otherKey = Bits256.leaf(buffer)
+      expect(Bits256.comparator(key, otherKey)).to.equal(0)
+    })
+
+    it('should compare 2 equal partial-length instances', () => {
+      let key = Bits256.from('100010')
+      let otherKey = Bits256.from('100010')
+      expect(Bits256.comparator(key, otherKey)).to.equal(0)
+
+      key = Bits256.from('1000101010001010')
+      otherKey = Bits256.from('1000101010001010')
+      expect(Bits256.comparator(key, otherKey)).to.equal(0)
+    })
+
+    binaryStrings.forEach(str => {
+      const key = Bits256.from(str)
+
+      binaryStrings.forEach(otherStr => {
+        const otherKey = Bits256.from(otherStr)
+
+        it(`should correctly compare ${str} and ${otherStr}`, () => {
+          const comp = (str === otherStr)
+            ? 0
+            : (str < otherStr) ? -1 : 1
+          expect(Bits256.comparator(key, otherKey)).to.equal(comp)
+        })
+      })
+    })
+
+    it('should correctly compare substring instances', () => {
+      let key = Bits256.from('10001')
+      let otherKey = Bits256.from('100010')
+      expect(Bits256.comparator(key, otherKey)).to.equal(-1)
+      expect(Bits256.comparator(otherKey, key)).to.equal(1)
+
+      key = Bits256.from('1000100')
+      otherKey = Bits256.from('10001000')
+      expect(Bits256.comparator(key, otherKey)).to.equal(-1)
+      expect(Bits256.comparator(otherKey, key)).to.equal(1)
+
+      key = Bits256.from('1000100')
+      otherKey = Bits256.from('100010001')
+      expect(Bits256.comparator(key, otherKey)).to.equal(-1)
+      expect(Bits256.comparator(otherKey, key)).to.equal(1)
+    })
+  })
+
   describe('constructor', () => {
     it('should not accept object', () => {
       expect(() => Bits256.from({
@@ -118,6 +190,25 @@ describe('Bits256', () => {
     })
   })
 
+  describe('truncate', () => {
+    binaryStrings.forEach(str => {
+      const repr = (str.length > 40) ? str.substring(0, 40) + '...' : str
+
+      for (let len = 0; len < str.length; len++) {
+        it(`should truncate bit string ${repr} to length ${len}`, () => {
+          const bits = Bits256.from(str).truncate(len)
+          expect(bits.bitLength()).to.equal(len)
+          expect(bits.toJSON()).to.equal(str.substring(0, len))
+        })
+      }
+    })
+
+    it('should throw when instructed to truncate to an excessive length', () => {
+      const bits = Bits256.from('110101')
+      expect(() => bits.truncate(7)).to.throw(/Cannot truncate bit slice/i)
+    })
+  })
+
   describe('append', () => {
     it('should append 2 short bit slices', () => {
       const x = Bits256.from('10')
@@ -163,6 +254,37 @@ describe('Bits256', () => {
     })
   })
 
+  describe('commonPrefix', () => {
+    const pairs = [
+      [ '100', '10001', '100' ],
+      [ '1001', '1011101', '10' ],
+      [ '1001', '1001', '1001' ],
+      [ '00010100', '0001010111', '0001010' ],
+      [ '000101010', '0001010111', '00010101' ],
+      [ '0001001010000101010', '00010010100001010111', '000100101000010101' ]
+    ]
+
+    pairs.forEach(({ 0: xStr, 1: yStr, 2: prefix }) => {
+      it(`should find common prefix for bit slices ${xStr} and ${yStr}`, () => {
+        const x = Bits256.from(xStr)
+        const y = Bits256.from(yStr)
+        expect(x.commonPrefix(y).toJSON()).to.equal(prefix)
+        expect(y.commonPrefix(x).toJSON()).to.equal(prefix)
+      })
+    })
+
+    it('should return an empty bit slice when appropriate', () => {
+      let x = Bits256.from('00')
+      let y = Bits256.from('10001')
+      expect(x.commonPrefix(y).toJSON()).to.equal('')
+      expect(y.commonPrefix(x).toJSON()).to.equal('')
+
+      x = Bits256.from('0000100000000000000000')
+      expect(x.commonPrefix(y).toJSON()).to.equal('')
+      expect(y.commonPrefix(x).toJSON()).to.equal('')
+    })
+  })
+
   describe('toString', () => {
     it('should output full bit contents for short slice', () => {
       const bits = Bits256.from('110111')
@@ -172,6 +294,30 @@ describe('Bits256', () => {
     it('should shorten bit contents for long slice', () => {
       const bits = Bits256.from('1010101001')
       expect(bits.toString()).to.equal('bits(10101010...)')
+    })
+  })
+
+  describe('equals', () => {
+    it('should correctly determine that 2 terminal instances are equal', () => {
+      const buffer = new Uint8Array(32)
+      for (let i = 0; i < buffer.length; i++) buffer[i] = 65 + i
+
+      const x = Bits256.leaf(buffer)
+      const y = new Bits256(buffer, 256)
+      expect(x.equals(y)).to.be.true()
+    })
+
+    it('should correctly determine that 2 non-terminal instances are equal', () => {
+      const x = Bits256.from('110101')
+      const y = new Bits256('110101')
+      expect(x.equals(y)).to.be.true()
+      expect(y.equals(x)).to.be.true()
+    })
+
+    it('should determine that a sub-key is not equal to the key', () => {
+      const x = Bits256.from('1101')
+      const y = new Bits256('110101')
+      expect(x.equals(y)).to.be.false()
     })
   })
 })
