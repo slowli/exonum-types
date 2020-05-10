@@ -36,11 +36,11 @@ const DUMMY_RESOLVER = dummyResolver()
  * @returns {(any, ?TypeResolver) => ExonumType} initialized factory
  */
 export default function initFactory (factory, {
-  name,
+  name = factory.name,
   argumentMeta = 'argument',
   prepare = (arg, resolver) => arg,
   typeTag = (arg) => arg,
-  typeName = (arg) => `${name}<?>`
+  typeName = (arg) => `${name}<${arg}>`
 } = {}) {
   if (typeof argumentMeta === 'string') {
     const prop = argumentMeta
@@ -57,7 +57,8 @@ export default function initFactory (factory, {
     if (resolver._hasType(fullTag)) {
       return resolver._getType(fullTag)
     } else {
-      resolver._addPendingType(fullTag, typeName(arg))
+      const cachedTypeName = typeName(arg)
+      resolver._addPendingType(fullTag, cachedTypeName)
       const type = factory(arg, resolver)
       resolver._resolvePendingType(fullTag, type)
 
@@ -80,10 +81,26 @@ export default function initFactory (factory, {
         }
       })
 
+      Object.defineProperty(type, 'toString', {
+        enumerable: false,
+        configurable: true,
+        value: function () {
+          return cachedTypeName
+        }
+      })
+
       return type
     }
   }
 
   setKind(memoizedFactory, 'factory')
+  Object.defineProperties(memoizedFactory, {
+    name: { configurable: true, value: name },
+    prepare: { configurable: true, value: prepare },
+    argumentMeta: { configurable: true, value: argumentMeta },
+    typeTag: { configurable: true, value: typeTag },
+    typeName: { configurable: true, value: typeName }
+  })
+
   return memoizedFactory
 }

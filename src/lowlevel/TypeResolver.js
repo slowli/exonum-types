@@ -402,6 +402,9 @@ function createFactory (factoryName, spec) {
   })
 
   function factory (arg, resolver) {
+    if (typeParams.length === 1) {
+      arg = { [typeParams[0].name]: arg }
+    }
     typeParam.push(resolver, factoryName, arg)
 
     try {
@@ -424,26 +427,33 @@ function createFactory (factoryName, spec) {
      */
     prepare (arg, resolver) {
       if (typeParams.length === 1) {
-        arg = { [typeParams[0].name]: arg }
+        // Expect a type
+        return resolver.resolve(arg)
+      } else {
+        // Expect an object with mapping of type param names to their specs
+        const resolvedParams = {}
+        typeParams.forEach(({ name }) => {
+          if (!(name in arg)) {
+            throw new Error(`Missing type parameter ${name}`)
+          }
+
+          resolvedParams[name] = resolver.resolve(arg[name])
+        })
+
+        return resolvedParams
       }
-
-      const resolvedParams = {}
-      typeParams.forEach(({ name }) => {
-        if (!(name in arg)) {
-          throw new Error(`Missing type parameter ${name}`)
-        }
-
-        resolvedParams[name] = resolver.resolve(arg[name])
-      })
-
-      return resolvedParams
     },
 
     typeTag (arg) {
-      return List(typeParams.map(({ name }) => arg[name]))
+      return (typeParams.length === 1)
+        ? arg
+        : List(typeParams.map(({ name }) => arg[name]))
     },
 
     typeName (arg) {
+      if (typeParams.length === 1) {
+        return `${factoryName}<${arg.inspect()}>`
+      }
       const typeDescription = typeParams.map(({ name }) => arg[name].inspect()).join(', ')
       return `${factoryName}<${typeDescription}>`
     }

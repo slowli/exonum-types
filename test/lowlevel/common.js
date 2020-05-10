@@ -44,8 +44,8 @@ describe('isExonumFactory', () => {
     'union',
     'option',
     'message',
-    'mapView',
-    'listView'
+    'MapView',
+    'ListView'
   ]
 
   standardFactories.forEach(name => {

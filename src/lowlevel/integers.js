@@ -54,8 +54,7 @@ function $integer (byteLength, signed) {
 
   class SizedInteger extends createType({
     typeLength: byteLength,
-    proxiedMethods: PROXIED_METHODS,
-    name: signed ? `Int${byteLength * 8}` : `Uint${byteLength * 8}`
+    proxiedMethods: PROXIED_METHODS
   }) {
     constructor (value, encoding) {
       let _raw
@@ -159,7 +158,11 @@ export const integer = initFactory((byteLength) => {
   return $integer(byteLength, true)
 }, {
   name: 'integer',
-  prepare: prepareLength
+  prepare: prepareLength,
+
+  typeName (byteLength) {
+    return `Int${byteLength * 8}`
+  }
 })
 
 /**
@@ -174,5 +177,9 @@ export const uinteger = initFactory((byteLength) => {
   return $integer(byteLength, false)
 }, {
   name: 'uinteger',
-  prepare: prepareLength
+  prepare: prepareLength,
+
+  typeName (byteLength) {
+    return `Uint${byteLength * 8}`
+  }
 })

@@ -48,8 +48,7 @@ function struct (spec, resolver) {
   const hasFixedLength = propertyTypes.every(T => T.typeLength() !== undefined)
 
   class StructType extends createType({
-    typeLength: hasFixedLength ? fixedLength : undefined,
-    name: structName(spec)
+    typeLength: hasFixedLength ? fixedLength : undefined
   }) {
     constructor (objectOrArray) {
       // `null` signals to opt out of external raw value exposition, e.g.,
@@ -167,6 +166,11 @@ export default initFactory(struct, {
     return List().withMutations(l => {
       fields.map(({ name, type }) => l.push(name, type))
     })
+  },
+
+  typeName (spec) {
+    const fields = spec.map(field => field.type.toString()).join(', ')
+    return `[${fields}]`
   }
 })
 
@@ -203,9 +207,4 @@ function parseInitializer (spec, arg, Rec) {
   }
 
   return parsed
-}
-
-function structName (spec) {
-  const fields = spec.map(field => field.type.toString()).join(', ')
-  return `[${fields}]`
 }

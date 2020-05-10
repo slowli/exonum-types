@@ -27,10 +27,7 @@ const SizeType = uinteger(4)
  *   arr.byteLength() // = 4 (length) + 3*8 (segment pointers) + 11 (strings)
  */
 function array (ElementType, resolver) {
-  class ExonumArray extends createType({
-    name: `Array<${ElementType.inspect()}>`,
-    typeLength: undefined
-  }) {
+  class ExonumArray extends createType() {
     constructor (arr) {
       let elements
       if (Array.isArray(arr)) {
@@ -113,5 +110,9 @@ export default initFactory(array, {
 
   prepare (Type, resolver) {
     return resolver.resolve(Type)
+  },
+
+  typeName (Type) {
+    return `Array<${Type}>`
   }
 })

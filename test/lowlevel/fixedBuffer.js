@@ -50,7 +50,7 @@ describe('fixedBuffer', () => {
   })
 
   it('should declare correct meta', () => {
-    expect(ShortBuffer.meta().factoryName).to.equal('buffer')
+    expect(ShortBuffer.meta().factoryName).to.equal('Buffer')
     expect(ShortBuffer.meta().size).to.equal(4)
   })
 

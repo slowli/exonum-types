@@ -11,8 +11,8 @@ import option from './lowlevel/option'
 import struct from './lowlevel/struct'
 import union from './lowlevel/union'
 import message from './message'
-import listView from './listView'
-import mapView from './mapView'
+import ListView from './ListView'
+import MapView from './MapView'
 
 // Resolver and type extensions
 import TypeResolver from './lowlevel/TypeResolver'
@@ -34,8 +34,8 @@ export const resolver = new TypeResolver()
     union,
     enum: union,
     message,
-    listView,
-    mapView
+    ListView,
+    MapView
   })
   .add(rawDefinitions)
   .extend('Bits256', extendBits256)

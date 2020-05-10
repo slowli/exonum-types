@@ -42,10 +42,7 @@ function union ({
   const variantNames = variants.map(f => f.name)
   const markerByteLength = 1 // XXX: may become variable later
 
-  class UnionType extends createType({
-    name: unionName(variants),
-    typeLength: undefined
-  }) {
+  class UnionType extends createType() {
     constructor (obj, maybeTag) {
       let tag, value
 
@@ -280,12 +277,12 @@ export default initFactory(union, {
     return List().withMutations(l => {
       variants.map(({ name, type }) => l.push(name, type))
     })
+  },
+
+  typeName ({ variants }) {
+    const varDescription = variants
+      .map(variant => variant.type.inspect())
+      .join(' | ')
+    return `(${varDescription})`
   }
 })
-
-function unionName (variants) {
-  const varDescription = variants
-    .map(variant => variant.type.inspect())
-    .join(' | ')
-  return `(${varDescription})`
-}

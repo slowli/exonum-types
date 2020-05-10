@@ -4,20 +4,27 @@ import nacl from 'tweetnacl'
 import fixedBuffer from './lowlevel/fixedBuffer'
 import { isExonumObject, rawOrSelf } from './lowlevel/common'
 
-const PublicKey = fixedBuffer(32)
-
 export const hashLength = 32
 export const secretKeyLength = nacl.sign.secretKeyLength
 export const publicKeyLength = nacl.sign.publicKeyLength
 export const signatureLength = nacl.sign.signatureLength
 
+const PublicKey = fixedBuffer(publicKeyLength)
+
+/**
+ * Calculates a SHA-256 hash of a sequential serialization of one or more items.
+ * Items may either be `Uint8Array`s or Exonum-typed objects.
+ *
+ * @param {Array<ExonumType | Uint8Array>} fragments
+ * @returns {Uint8Array}
+ */
 export function hash (...fragments) {
+  if (!fragments.every(frag => isExonumObject(frag) || (frag instanceof Uint8Array))) {
+    throw new TypeError('Unexpected argument(s) supplied for hash digest; Uint8Array(s) or Exonum-typed objects supported')
+  }
+
   const lengths = fragments.map(b => isExonumObject(b) ? b.byteLength() : b.length)
   const totalLen = lengths.reduce((total, len) => len + total, 0)
-
-  if (typeof totalLen !== 'number' || isNaN(totalLen)) {
-    throw new TypeError('Invalid argument(s) supplied for hash digest; arrayish objects and Exonum types supported')
-  }
 
   const buffer = new Uint8Array(totalLen)
   let pos = 0
